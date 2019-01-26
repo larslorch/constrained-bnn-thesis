@@ -37,12 +37,12 @@ Plot for functions sampled from single variational approximation
 
 def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
 
-    ground_truth_f = experiment['data']['ground_truth']
     plt_x_domain = experiment['data']['plt_x_domain']
     plt_y_domain = experiment['data']['plt_y_domain']
     X = experiment['data']['X']
     Y = experiment['data']['Y']
     X_plot = experiment['data']['X_plot']
+    Y_plot = experiment['data']['Y_plot']
     constr_plot = experiment['constraints']['plot']
 
     size_tup = experiment['experiment']['plot_size']
@@ -68,7 +68,7 @@ def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
             ax.add_patch(p.get())
 
         plt.title('Posterior samples using {}'.format(descr))
-        plt.plot(X_plot.numpy(), ground_truth_f(X_plot).numpy(),
+        plt.plot(X_plot.numpy(), Y_plot.numpy(),
                 color='blue', alpha=0.7, linestyle='--')
         plt.scatter(X.numpy(), Y, color='black', marker='x')
         plt.xlabel('x')
@@ -90,17 +90,16 @@ Plot for posterior predictive of single variational approximation
 
 def plot_posterior_predictive(param, prediction, experiment, plot_directory, descr):
 
-    ground_truth_f = experiment['data']['ground_truth']
     plt_x_domain = experiment['data']['plt_x_domain']
     plt_y_domain = experiment['data']['plt_y_domain']
     X = experiment['data']['X']
     Y = experiment['data']['Y']
     X_plot = experiment['data']['X_plot']
+    Y_plot = experiment['data']['Y_plot']
     X_v_id = experiment['data']['X_v_id']
+    Y_v_id = experiment['data']['Y_v_id']
     X_v_ood = experiment['data']['X_v_ood']
-
-    Y_v_id = ground_truth_f(X_v_id)
-    Y_v_ood = ground_truth_f(X_v_ood)
+    Y_v_ood = experiment['data']['Y_v_ood']
 
 
     constr_plot = experiment['constraints']['plot']
@@ -127,7 +126,7 @@ def plot_posterior_predictive(param, prediction, experiment, plot_directory, des
 
         ax.scatter(X.numpy(), Y.numpy(), color='black', marker='x')
         ax.plot(X_plot.numpy(), mean, c='black')
-        ax.plot(X_plot.numpy(), ground_truth_f(X_plot).numpy(),
+        ax.plot(X_plot.numpy(), Y_plot.numpy(),
                 color='blue', alpha=0.7, linestyle='--')
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -162,7 +161,7 @@ def plot_posterior_predictive(param, prediction, experiment, plot_directory, des
         fig, ax = plt.subplots()
 
         ax.plot(X_plot.numpy(), mean, c='black')
-        ax.plot(X_plot.numpy(), ground_truth_f(X_plot).numpy(),
+        ax.plot(X_plot.numpy(), Y_plot.numpy(),
                 color='blue', alpha=0.7, linestyle='--')
         ax.set_xlabel('')
         ax.set_ylabel('y')
@@ -270,7 +269,6 @@ def plot_constraint_heatmap(param, prediction, experiment, plot_directory):
     # TODO
 
     '''
-    ground_truth_f = experiment['data']['ground_truth']
     plt_x_domain = experiment['data']['plt_x_domain']
     plt_y_domain = experiment['data']['plt_y_domain']
 
@@ -310,10 +308,20 @@ Logs results to .txt in results folder
 
 def log_results(experiment, training_evaluations, violations, best_index, current_directory, descr):
     
+    compute_held_out_loglik_id = experiment['experiment']['compute_held_out_loglik_id']
+    compute_held_out_loglik_ood = experiment['experiment']['compute_held_out_loglik_ood']
+
+    compute_RMSE_id = experiment['experiment']['compute_RMSE_id']
+    compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
+
     held_out_ll_id = [dat['held_out_ll_indist']
                       for dat in training_evaluations]
     held_out_ll_ood = [dat['held_out_ll_outofdist']
                        for dat in training_evaluations]
+                       
+    rmse_id = [dat['rmse_id'] for dat in training_evaluations]
+    rmse_ood = [dat['rmse_ood'] for dat in training_evaluations]
+
     elbos = [dat['elbo'] for dat in training_evaluations]
 
     output_txt = "\n\nExperiment results : {}  | {}\n".format(
@@ -337,17 +345,33 @@ def log_results(experiment, training_evaluations, violations, best_index, curren
     for j, violation in enumerate(violations):
         output_txt += '{}\n'.format(round(violation, 4))
 
-    output_txt += '\n\n*** In-distribution held-out log likelihood ***\n'
-    output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
-        round(held_out_ll_id[best_index][-1].item(), 4))
-    for j, e in enumerate(held_out_ll_id):
-        output_txt += '{}\n'.format(round(e[-1].item(), 4))
+    if compute_held_out_loglik_id:
+        output_txt += '\n\n*** In-distribution held-out log likelihood ***\n'
+        output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
+            round(held_out_ll_id[best_index][-1].item(), 4))
+        for j, e in enumerate(held_out_ll_id):
+            output_txt += '{}\n'.format(round(e[-1].item(), 4))
 
-    output_txt += '\n\n*** Out-of-distribution held-out log likelihood ***\n'
-    output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
-        round(held_out_ll_ood[best_index][-1].item(), 4))
-    for j, e in enumerate(held_out_ll_ood):
-        output_txt += '{}\n'.format(round(e[-1].item(), 4))
+    if compute_held_out_loglik_ood:
+        output_txt += '\n\n*** Out-of-distribution held-out log likelihood ***\n'
+        output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
+            round(held_out_ll_ood[best_index][-1].item(), 4))
+        for j, e in enumerate(held_out_ll_ood):
+            output_txt += '{}\n'.format(round(e[-1].item(), 4))
+    
+    if compute_RMSE_id:
+        output_txt += '\n\n*** In-distribution validation RMSE ***\n'
+        output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
+            round(rmse_id[best_index][-1].item(), 4))
+        for j, e in enumerate(rmse_id):
+            output_txt += '{}\n'.format(round(e[-1].item(), 4))
+
+    if compute_RMSE_ood:
+        output_txt += '\n\n*** Out-of-distribution validation RMSE ***\n'
+        output_txt += '\nBEST (by objective): {}\nAll restarts:\n'.format(
+            round(rmse_ood[best_index][-1].item(), 4))
+        for j, e in enumerate(rmse_ood):
+            output_txt += '{}\n'.format(round(e[-1].item(), 4))
 
     # experiment data
     output_txt += '\n\n\n{}\n\n'.format(

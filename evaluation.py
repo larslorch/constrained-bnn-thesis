@@ -25,15 +25,16 @@ def run_experiment(experiment):
     prior_ds = experiment['nn']['prior_ds']
 
     '''Data '''
-    ground_truth_f = experiment['data']['ground_truth']
     noise_ds = experiment['data']['noise_ds']
     X = experiment['data']['X'] 
     Y = experiment['data']['Y']
-    X_v_id = experiment['data']['X_v_id']
-    X_v_ood = experiment['data']['X_v_ood']
 
-    Y_v_id = ground_truth_f(X_v_id)
-    Y_v_ood = ground_truth_f(X_v_ood)
+    X_v_id = experiment['data']['X_v_id']
+    Y_v_id = experiment['data']['Y_v_id']
+
+    X_v_ood = experiment['data']['X_v_ood']
+    Y_v_ood = experiment['data']['Y_v_ood']
+
 
     '''BbB settings'''
     bbb_num_samples = experiment['bbb']['BbB_rv_samples']
@@ -65,6 +66,12 @@ def run_experiment(experiment):
     regular_BbB = experiment['experiment']['run_regular_BbB']
     constrained_BbB = experiment['experiment']['run_constrained_BbB']
     multithread = experiment['experiment']['multithread_computation']
+    compute_held_out_loglik_id = experiment['experiment']['compute_held_out_loglik_id']
+    compute_held_out_loglik_ood = experiment['experiment']['compute_held_out_loglik_ood']
+
+    compute_RMSE_id = experiment['experiment']['compute_RMSE_id']
+    compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
+
 
     '''Make directory for results'''
     current_directory = make_unique_dir(experiment)
@@ -93,6 +100,15 @@ def run_experiment(experiment):
         std = samples.std(0).squeeze()
         return ds.Normal(mean, std).log_prob(y).sum()
 
+    '''Compute RMSE of validation dataset given optimizated params'''
+    def compute_rmse(x, y, param):
+        mean, log_std = param[:, 0], param[:, 1]
+        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp()
+        samples = forward(ws, x)
+        pred = samples.mean(0) # prediction is mean
+        rmse = (pred - y).pow(2).mean(0).pow(0.5)
+        return rmse
+    
     '''Computes expected violation via constraint function, of distribution implied by param'''
     def violation(param):
         mean, log_std = param[:, 0], param[:, 1]
@@ -146,7 +162,13 @@ def run_experiment(experiment):
 
         # evaluation
         training_evaluation = dict(
-            objective=[], elbo=[], violation=[], held_out_ll_indist=[], held_out_ll_outofdist=[])
+            objective=[], 
+            elbo=[], 
+            violation=[], 
+            held_out_ll_indist=[], 
+            held_out_ll_outofdist=[],
+            rmse_id=[],
+            rmse_ood=[])
 
         for t in range(iterations):
 
@@ -164,12 +186,32 @@ def run_experiment(experiment):
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
-                training_evaluation['held_out_ll_indist'].append(
-                    held_out_loglikelihood(X_v_id, Y_v_id, params.detach()))
-                training_evaluation['held_out_ll_outofdist'].append(
-                    held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach()))
 
-                print('Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:15}'.format(t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4)))
+                if compute_held_out_loglik_id:
+                    training_evaluation['held_out_ll_indist'].append(
+                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach()))
+
+                if compute_held_out_loglik_ood:
+                    training_evaluation['held_out_ll_outofdist'].append(
+                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach()))
+                
+                if compute_RMSE_id:
+                    rmse_id_cache = compute_rmse(
+                        X_v_id, Y_v_id, params.detach())
+                    training_evaluation['rmse_id'].append(rmse_id_cache)
+                
+                if compute_RMSE_ood:
+                    training_evaluation['rmse_ood'].append(
+                        compute_rmse(X_v_ood, Y_v_ood, params.detach()))
+
+                # command line printing
+                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}'.format(
+                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
+
+                if compute_RMSE_id:
+                    str += '   ID-RMSE {:10}'.format(round(rmse_id_cache.item(), 4))
+
+                print(str)
 
         return params.detach(), loss.detach(), training_evaluation
 

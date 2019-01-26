@@ -40,7 +40,7 @@ TODOs
 
 if __name__ == '__main__':
 
-    from evaluation_input_tanh import all_experiments
+    from exp_boston_housing import all_experiments
 
     for id, experiment in enumerate(all_experiments):
 

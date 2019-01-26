@@ -51,11 +51,16 @@ def ground_truth(x):
 
     
 X = torch.tensor([-4.5, -4.0, -3.0, -2.0, -1.5, -1.0, 0.0, 0.5, 1.0, 2.0, 2.5]).unsqueeze(1)
-Y = ground_truth(X) + ds.Normal(0.0, 0.1).sample(X.shape)
+Y = ground_truth(X)
 
 X_plot = torch.linspace(-13, 11, steps=100).unsqueeze(1)
+Y_plot = ground_truth(X_plot)
+
 X_id = torch.tensor([-4.0, -3.5, -2.5, -2.0, -1.3, 0.2, 0.8, 1.5, 1.8]).unsqueeze(1)
+Y_id = ground_truth(X_id)
+
 X_ood = torch.tensor([-11.0, -9.5, -9.0, -8.5, -8.0, 6.0, 7.5, 8.0, 8.5, 10.0]).unsqueeze(1)
+Y_ood = ground_truth(X_ood)
 
 
 '''
@@ -97,7 +102,6 @@ constr = [
     ([x_c3], [y_c3]),
 ]
 
-# continue experiment setup of tanh to test that implementation works
 
 def constrained_region_sampler(s):
     return torch.cat((ds.Uniform(-14, -6).sample(sample_shape=torch.Size([round(s / 2)])),
@@ -122,7 +126,6 @@ prototype = {
         'prior_ds' : ds.Normal(0.0, 3.0),
     },
     'data' : {
-        'ground_truth': ground_truth,
         'noise_ds': ds.Normal(0.0, 0.1),
         'plt_x_domain': (-13, 11),
         'plt_y_domain': (-2.5, 2.5),
@@ -130,8 +133,11 @@ prototype = {
         'X':  X,
         'Y':  Y,
         'X_plot': X_plot,
+        'Y_plot': Y_plot,
         'X_v_id': X_id,
+        'Y_v_id': Y_id,
         'X_v_ood': X_ood,
+        'Y_v_ood': Y_ood,
     },
     'constraints' : {
         'constr': constr,
@@ -145,13 +151,13 @@ prototype = {
     'bbb' :{
         'BbB_rv_samples': 100,
         'regular' : {
-            'iterations' : 3000,
+            'iterations' : 300,
             'restarts': 1,
             'reporting_every_' : 100,
             'cores_used' : 1,
         },
         'constrained': {
-            'iterations': 3000,
+            'iterations': 300,
             'restarts': 1,
             'reporting_every_': 100,
             'cores_used': 1,

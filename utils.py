@@ -36,8 +36,8 @@ def experiment_to_string(experiment):
     ]
 
     data = [
-        ('Ground truth f', experiment['data']['ground_truth']),
         ('Input data X', experiment['data']['X']),
+        ('Output data Y', experiment['data']['Y']),
         ('ID test set', experiment['data']['X_v_id']),
         ('OOD test set', experiment['data']['X_v_ood']),
     ]
@@ -67,7 +67,7 @@ def experiment_to_string(experiment):
                 s += str + '\n'
             else:
                 # constraints
-                if type(elt) is list:
+                if type(elt) is list and elt != []:
                     if type(elt[0]) is tuple:
                         for l1, l2 in elt:
                             s += 'X constraints: {}\nY constraints:{}\n\n'.format(
