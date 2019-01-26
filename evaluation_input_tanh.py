@@ -20,9 +20,28 @@ Preliminary definitions
 '''
 
 
+class ReLUActivation(torch.autograd.Function):
+
+    def __str__(self):
+        return 'relu'
+        
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        return input.clamp(min=0)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[input < 0] = 0
+        return grad_input
+
+
 def rbf(x): return torch.exp(- x.pow(2))
-def relu(x): return x.clamp(min=0.0)
+relu = ReLUActivation.apply
 def tanh(x): return x.tanh(x)
+def softrelu(x): return torch.log(1.0 + x.exp())
 
 N, n_dim = 10, 1
 
@@ -98,8 +117,8 @@ all_experiments = []
 prototype = {
     'title': '1D_test',
     'nn' : {
-        'architecture' : [1, 20, 20, 1],
-        'nonlinearity' : rbf,
+        'architecture' : [1, 10, 10, 1],
+        'nonlinearity': relu,
         'prior_ds' : ds.Normal(0.0, 3.0),
     },
     'data' : {
@@ -126,13 +145,13 @@ prototype = {
     'bbb' :{
         'BbB_rv_samples': 100,
         'regular' : {
-            'iterations' : 10000,
+            'iterations' : 3000,
             'restarts': 1,
             'reporting_every_' : 100,
             'cores_used' : 1,
         },
         'constrained': {
-            'iterations': 10000,
+            'iterations': 3000,
             'restarts': 1,
             'reporting_every_': 100,
             'cores_used': 1,

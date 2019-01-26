@@ -60,7 +60,11 @@ def experiment_to_string(experiment):
             s += '\n' + descr + ':\n'
             if callable(elt):
                 # function
-                s += inspect.getsource(elt) + '\n'
+                try:
+                    str = inspect.getsource(elt)
+                except:
+                    str = 'custom torch.autograd.funtion' # this happens for relu
+                s += str + '\n'
             else:
                 # constraints
                 if type(elt) is list:

@@ -32,7 +32,7 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
     '''
 
     def logq(log_std):
-        return - torch.sum(0.5 + 0.5 * torch.log(2 * torch.tensor(math.pi)) + (1.0 + log_std.exp()).log().log()) # log_std)
+        return - torch.sum(0.5 + 0.5 * torch.log(2 * torch.tensor(math.pi)) + log_std) #(1.0 + log_std.exp()).log().log())
 
     '''
     Stochastic estimate of variational objective (neg. ELBO)
@@ -42,7 +42,7 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
     def evidence_lower_bound(params):
         mean, log_std = unpack_params(params)
         weights = mean + torch.randn(num_samples,
-                                     params.shape[0]) * torch.log(1.0 + log_std.exp())# log_std.exp()
+                                     params.shape[0]) * log_std.exp() #torch.log(1.0 + log_std.exp())
         elbo = (logp(weights) - logq(log_std)).mean()
         return elbo
 

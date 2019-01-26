@@ -53,7 +53,7 @@ def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
     if X_plot.shape[1] == 1:
 
         mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(function_samples, param.shape[0]) * torch.log(1.0 + log_std.exp())  # * log_std.exp()
+        ws = mean + torch.randn(function_samples, param.shape[0]) *  log_std.exp() # torch.log(1.0 + log_std.exp()) 
         samples = prediction(ws, X_plot).squeeze()
 
         if len(samples.shape) > 2:
@@ -113,7 +113,7 @@ def plot_posterior_predictive(param, prediction, experiment, plot_directory, des
 
         mean, log_std = param[:, 0], param[:, 1]
         ws = mean + torch.randn(function_samples,
-                                param.shape[0]) * torch.log(1.0 + log_std.exp())#  log_std.exp()
+                                param.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
         samples = prediction(ws, X_plot).squeeze()
         mean = samples.mean(0).squeeze().numpy()
         std = samples.std(0).squeeze().numpy()

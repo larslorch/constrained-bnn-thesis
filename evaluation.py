@@ -86,8 +86,8 @@ def run_experiment(experiment):
 
     '''Computes held-out log likelihood of x,y given distribution implied by param'''
     def held_out_loglikelihood(x, y, param):
-        mean, log_std = mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(S, mean.shape[0]) * torch.log(1.0 + log_std.exp()) # log_std.exp()
+        mean, log_std = param[:, 0], param[:, 1]
+        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
         samples = forward(ws, x)
         mean = samples.mean(0).squeeze()
         std = samples.std(0).squeeze()
@@ -95,10 +95,10 @@ def run_experiment(experiment):
 
     '''Computes expected violation via constraint function, of distribution implied by param'''
     def violation(param):
-        mean, log_std = mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(S, mean.shape[0]) * torch.log(1.0 + log_std.exp()) # log_std.exp()
+        mean, log_std = param[:, 0], param[:, 1]
+        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
         x_c = constrained_region_sampler(violation_samples)
-        y = forward(ws, x_c)        
+        y = forward(ws, x_c)    
         return gamma * penalization(x_c, y) / y.numel()
 
     '''Computes penalization of constrained region of x,y given constraints'''
@@ -140,18 +140,22 @@ def run_experiment(experiment):
             reporting_every_ = reporting_every_regular_
 
         # ADAM optimizer
-        optimizer = optim.Adam([params], lr=0.005)
+        optimizer = optim.Adam([params], lr=0.01)
+        # optimizer = optim.SGD([params], lr=0.01, momentum=0.9)
+
 
         # evaluation
         training_evaluation = dict(
             objective=[], elbo=[], violation=[], held_out_ll_indist=[], held_out_ll_outofdist=[])
 
         for t in range(iterations):
+
             # optimization
             optimizer.zero_grad()
             loss = variational_objective(params)
             loss.backward()
             optimizer.step()
+
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
@@ -257,7 +261,7 @@ def compute_posterior_predictive_violation(params, prediction, experiment):
         mean, log_std = param[:, 0], param[:, 1]
 
         '''Collect samples from optimized variational distribution'''
-        ws = mean + torch.randn(S, param.shape[0]) * torch.log(1.0 + log_std.exp()) # log_std.exp()
+        ws = mean + torch.randn(S, param.shape[0]) *  log_std.exp() # torch.log(1.0 + log_std.exp()) #
 
         '''Integral of posterior predictive over total constrained region, evaluation metric'''
 
