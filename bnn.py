@@ -21,12 +21,16 @@ Arguments:
     prior_ds         prior distribution p(W)
     noise_ds         noise distribution for likelihood p(Y|X,W)
     nonlinearity     nonlinearity function
+    num_batches      number of minibatches in optimization, necessary for
+                     rescaling KL[q(w) | p(w)] as explained in 
+                     https://arxiv.org/pdf/1505.05424.pdf  
 '''
 
 def make_BNN(layer_sizes, 
              prior_ds,
              noise_ds,
-             nonlinearity):
+             nonlinearity,
+             num_batches=1):
 
     layer_shapes = list(zip(layer_sizes[:-1], layer_sizes[1:]))
     num_weights = sum((m + 1) * n for m, n in layer_shapes)
@@ -81,7 +85,7 @@ def make_BNN(layer_sizes,
         log_prior = prior_ds.log_prob(weights).sum()
         preds = forward(weights, inputs)
         log_lik = noise_ds.log_prob(preds - targets).sum()
-        return log_prior + log_lik
+        return log_prior / num_batches + log_lik
 
     return num_weights, forward, log_prob
 

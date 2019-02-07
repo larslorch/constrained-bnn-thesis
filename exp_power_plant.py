@@ -46,13 +46,15 @@ def softrelu(x): return torch.log(1.0 + x.exp())
 
 
 '''
-Import Boston Housing data
+Import 
+Combined Cycle Power Plant Data Set 
 '''
-# Use 1-hidden layer, 50 nodes, BNN as in http://bayesiandeeplearning.org/2016/papers/BDL_34.pdf
+# Use 2-hidden layer, 100 nodes, BNN as in http://bayesiandeeplearning.org/2016/papers/BDL_34.pdf
 
-df = pd.read_csv("datasets/boston_housing.csv")
-print('Boston Housing: {}'.format(df.shape))
+df = pd.read_csv("datasets/power_plant.csv")
+print('Combined Cycle Power Plant Data Set: {}'.format(df.shape))
 print(list(df.columns.values))
+# print(df.head())
 
 # shuffle dataset randomly
 data = torch.tensor(df.values, dtype=torch.float32)
@@ -65,10 +67,10 @@ N0 = int(split * data.shape[0])
 train_data = data[:N0]
 test_data = data[N0:]
 
-X_train = train_data[:, :13]
-Y_train = train_data[:, 13].unsqueeze(1)
-X_test = test_data[:, :13]
-Y_test = test_data[:, 13].unsqueeze(1)
+X_train = train_data[:, :4]
+Y_train = train_data[:, 4].unsqueeze(1)
+X_test = test_data[:, :4]
+Y_test = test_data[:, 4].unsqueeze(1)
 
 X = X_train
 Y = Y_train
@@ -90,14 +92,47 @@ Constraints
 Have to be broadcastable!!
 i.e. inputs are
      x is (datapoints, in_dim)
-     y is (weights samples, datapoints, out_dim)
+     y is (weights samples, datapoints, out_dim) 
 
+Has to return y.shape
+
+Should mark forbidden region, not feasible region
+'''
+
+'''
+Power plant data:
+- Temperature (T) in the range 1.81°C and 37.11°C,
+- Ambient Pressure (AP) in the range 992.89-1033.30 milibar,
+- Relative Humidity (RH) in the range 25.56% to 100.16%
+- Exhaust Vacuum (V) in teh range 25.36-81.56 cm Hg
+- Net hourly electrical energy output (EP) 420.26-495.76 MW
 
 '''
 
 
-constr = [
+# Temp (0) between 1.81°C and 37.11°C :
+def at_c0(x, y): return (x[:, 0] - 37.11).unsqueeze(1)
+def at_c1(x, y): return (1.81 - x[:, 0]).unsqueeze(1)
 
+# Vac (1) range 25.36-81.56 cm Hg
+def v_c0(x, y): return (x[:, 1] - 81.56).unsqueeze(1)
+def v_c1(x, y): return (25.36 - x[:, 1]).unsqueeze(1)
+
+# Ambient Pressure (2) 992.89-1033.30 milibar
+def ap_c0(x, y): return (x[:, 2] - 1033.30).unsqueeze(1)
+def ap_c1(x, y): return (992.89 - x[:, 2]).unsqueeze(1)
+
+# Relative Humidity (3) 25.56% to 100.16%
+def rh_c0(x, y): return (x[:, 3] - 100.16).unsqueeze(1)
+def rh_c1(x, y): return (25.56 - x[:, 3]).unsqueeze(1)
+
+# Y: Net hourly electrical energy output (EP) 420.26-495.76 MW
+def ep_c0(x, y): return (y[:, 0] - 495.76).unsqueeze(1)
+def ep_c1(x, y): return (420.26 - y[:, 0]).unsqueeze(1)
+
+
+constr = [
+    ([at_c0, at_c1, v_c0, v_c1, ap_c0, ap_c1, rh_c0, rh_c1], [ep_c0, ep_c1]),
 ]
 
 '''
@@ -105,9 +140,12 @@ Has to sample X's from constrained input region
 '''
 
 def constrained_region_sampler(s):
-    return torch.randn(s, 13) 
-
-# TODO once constraints have been found
+    return torch.cat([
+        ds.Uniform(1.81, 37.11).sample(sample_shape=torch.Size([s, 1])),
+        ds.Uniform(25.36, 81.56).sample(sample_shape=torch.Size([s, 1])),
+        ds.Uniform(992.89, 1033.30).sample(sample_shape=torch.Size([s, 1])),
+        ds.Uniform(25.56, 100.16).sample(sample_shape=torch.Size([s, 1])),
+    ], dim=1)
 
 
 
@@ -125,7 +163,7 @@ all_experiments = []
 prototype = {
     'title': 'boston_housing_50_relu',
     'nn': {
-        'architecture': [13, 50, 1],
+        'architecture': [4, 100, 100, 1],
         'nonlinearity': relu,
         'prior_ds': ds.Normal(0.0, 3.0),
     },
@@ -153,16 +191,16 @@ prototype = {
         ],
     },
     'bbb': {
-        'BbB_rv_samples': 100,
-        'batch_size' : 256, # batch_size = 0 implies full dataset training
+        'BbB_rv_samples': 200,
+        'batch_size': 1024,  # batch_size = 0 implies full dataset training
         'regular': {
             'iterations': 10000,
-            'restarts': 3,
-            'reporting_every_': 100,
+            'restarts': 1,
+            'reporting_every_': 50,
             'cores_used': 1,
         },
         'constrained': {
-            'iterations': 300,
+            'iterations': 10090,
             'restarts': 1,
             'reporting_every_': 100,
             'cores_used': 1,
@@ -182,8 +220,8 @@ prototype = {
 
     },
     'experiment': {
-        'run_regular_BbB': True,
-        'run_constrained_BbB': False,
+        'run_regular_BbB': False,
+        'run_constrained_BbB': True,
         'multithread_computation': False,
         'compute_held_out_loglik_id': True,
         'compute_held_out_loglik_ood': False,

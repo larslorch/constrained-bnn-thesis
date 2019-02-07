@@ -2,11 +2,20 @@ import inspect
 import pprint
 import torch
 
+# def sig(z, tau_c):
+#     return torch.reciprocal((1 + (tau_c * z).exp()))
+
+# def psi(z, tau_c, tau_g):
+#     return torch.reciprocal((1 + (tau_c * z).exp()) * (1 + (tau_g * z).exp()))
+
+
+# stable computation using tanh
+
 def sig(z, tau_c):
-    return torch.reciprocal((1 + (tau_c * z).exp()))
+    return 0.5 * (torch.tanh(tau_c * z) + 1) 
 
 def psi(z, tau_c, tau_g):
-    return torch.reciprocal((1 + (tau_c * z).exp()) * (1 + (tau_g * z).exp()))
+    return 0.25 * (torch.tanh(tau_c * z) + 1) * (torch.tanh(tau_g * z) + 1)
 
 
 '''

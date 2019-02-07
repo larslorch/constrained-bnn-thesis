@@ -12,7 +12,8 @@ from torch.autograd import Variable
 import copy
 
 from plot import *
-
+from main import main
+from hmc import main_HMC
 
 
 '''
@@ -43,23 +44,25 @@ relu = ReLUActivation.apply
 def tanh(x): return x.tanh(x)
 def softrelu(x): return torch.log(1.0 + x.exp())
 
+
+# Data
+
 N, n_dim = 10, 1
 
-
 def ground_truth(x):
-    return torch.tanh(0.5 * x) + 2 * torch.exp(- 0.5 * (x + 2.5).pow(2))
-
+    return - x.pow(4) + 3 * x.pow(2) + 1
     
-X = torch.tensor([-4.5, -4.0, -3.0, -2.0, -1.5, -1.0, 0.0, 0.5, 1.0, 2.0, 2.5]).unsqueeze(1)
+    
+X = torch.tensor([-2, -1.8, -1, 1, 1.8, 2]).unsqueeze(1)
 Y = ground_truth(X)
 
-X_plot = torch.linspace(-13, 11, steps=100).unsqueeze(1)
+X_plot = torch.linspace(-5, 5, steps=100).unsqueeze(1)
 Y_plot = ground_truth(X_plot)
 
-X_id = torch.tensor([-4.0, -3.5, -2.5, -2.0, -1.3, 0.2, 0.8, 1.5, 1.8]).unsqueeze(1)
+X_id = torch.tensor([-1.9, -1.5, 0.5, 0.0, 0.5, 1.5, 1.9]).unsqueeze(1)
 Y_id = ground_truth(X_id)
 
-X_ood = torch.tensor([-11.0, -9.5, -9.0, -8.5, -8.0, 6.0, 7.5, 8.0, 8.5, 10.0]).unsqueeze(1)
+X_ood = torch.tensor([-4, -3, -2.5, 2.5, 3, 4]).unsqueeze(1)
 Y_ood = ground_truth(X_ood)
 
 
@@ -73,33 +76,8 @@ i.e. x is (datapoints, in_dim)
 
 '''
 
-# for all x: 
-#  0 < y
-# def y_c0(x, y):
-#     return - y
-
-
-# x < - 6 : y < -1.3
-def x_c0(x, y): return x + 6
-def y_c0(x, y): return y + 1.3
-
-# x < - 6 : y > -0.7
-def x_c1(x, y): return x + 6
-def y_c1(x, y): return - y - 0.7
-
-# x > 4 : y > 1.3
-def x_c2(x, y): return - x + 4
-def y_c2(x, y): return - y + 1.3
-
-# x > 4 : y < 0.7
-def x_c3(x, y): return - x + 4
-def y_c3(x, y): return y - 0.7
 
 constr = [
-    # ([x_c0], [y_c0]),
-    # ([x_c1], [y_c1]),
-    ([x_c2], [y_c2]),
-    ([x_c3], [y_c3]),
 ]
 
 
@@ -118,18 +96,19 @@ Constraints are of the form
 '''
 all_experiments = []
 
+
 prototype = {
-    'title': '1D_test',
-    'nn' : {
-        'architecture' : [1, 10, 10, 1],
-        'nonlinearity': relu,
-        'prior_ds' : ds.Normal(0.0, 3.0),
+    'title': '6pt_toy_example',
+    'nn': {
+        'architecture': [n_dim, 20, 1],
+        'nonlinearity': rbf,
+        'prior_ds': ds.Normal(0.0, 3.0),
     },
-    'data' : {
+    'data': {
         'noise_ds': ds.Normal(0.0, 0.1),
-        'plt_x_domain': (-13, 11),
-        'plt_y_domain': (-2.5, 2.5),
-        'integral_constrained_region' : 14, 
+        'plt_x_domain': (-5, 5),
+        'plt_y_domain': (-15, 12),
+        'integral_constrained_region': 0,
         'X':  X,
         'Y':  Y,
         'X_plot': X_plot,
@@ -139,36 +118,37 @@ prototype = {
         'X_v_ood': X_ood,
         'Y_v_ood': Y_ood,
     },
-    'constraints' : {
+    'constraints': {
         'constr': constr,
         'plot': [
             # DrawRectangle(bottom_left=(-20, -0.7), top_right=(-6, 20)),
             # DrawRectangle(bottom_left=(-20, -5), top_right=(-6, -1.3)),
-            DrawRectangle(bottom_left=(4, -20), top_right=(20, 0.7)),
-            DrawRectangle(bottom_left=(4, 1.3), top_right=(20, 5)),
+            # DrawRectangle(bottom_left=(4, -20), top_right=(20, 0.7)),
+            # DrawRectangle(bottom_left=(4, 1.3), top_right=(20, 5)),
         ],
     },
-    'bbb' :{
+    'bbb': {
         'BbB_rv_samples': 100,
-        'regular' : {
-            'iterations' : 300,
-            'restarts': 1,
-            'reporting_every_' : 100,
-            'cores_used' : 1,
+        'batch_size': 0,  # batch_size = 0 implies full dataset training
+        'regular': {
+            'iterations': 5000,
+            'restarts': 4,
+            'reporting_every_': 50,
+            'cores_used': 1,
         },
         'constrained': {
-            'iterations': 300,
+            'iterations': 1000,
             'restarts': 1,
-            'reporting_every_': 100,
+            'reporting_every_': 50,
             'cores_used': 1,
-            'violation_samples' : 500,
+            'violation_samples': 500,
             'tau_tuple': (15.0, 2.0),
             'gamma': 20000,
             'constrained_region_sampler': constrained_region_sampler,
         },
-        'initialize_q' : {
+        'initialize_q': {
             'mean': 1.0,  # * torch.randn
-            'std' : -5.0, # * torch.ones
+            'std': -3.0,  # * torch.ones
         },
         'posterior_predictive_analysis': {
             'posterior_samples': 50,
@@ -176,26 +156,27 @@ prototype = {
         }
 
     },
-    'experiment' : {
-        'run_regular_BbB' : True,
+    'experiment': {
+        'run_regular_BbB': True,
         'run_constrained_BbB': False,
         'multithread_computation': False,
-        'compute_held_out_loglik': True,
+        'compute_held_out_loglik_id': True,
+        'compute_held_out_loglik_ood': False,
+        'compute_RMSE_id': True,
+        'compute_RMSE_ood': False,
         'show_function_samples': True,
         'show_posterior_predictive': True,
         'show_plot_training_evaluations': True,
-        'show_constraint_function_heatmap': True,
-        'plot_size' : (6, 4), # width, height (inches)
+        'show_constraint_function_heatmap': False,
+        'plot_size': (6, 4),  # width, height (inches)
     },
 }
 
+
 all_experiments.append(prototype)
 
-print('Dict needs to be updated.')
-
-
-# repeat 
-# all_experiments = 1 * all_experiments
+# main(all_experiments)
+main_HMC(all_experiments)
 
 
 

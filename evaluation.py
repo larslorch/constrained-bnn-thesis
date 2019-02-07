@@ -38,6 +38,8 @@ def run_experiment(experiment):
 
     '''BbB settings'''
     bbb_num_samples = experiment['bbb']['BbB_rv_samples']
+    batch_size = experiment['bbb']['batch_size']
+    num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
 
     # regular
     iterations_regular = experiment['bbb']['regular']['iterations']
@@ -81,15 +83,35 @@ def run_experiment(experiment):
         make_BNN(layer_sizes=architecture,
                  prior_ds=prior_ds,
                  noise_ds=noise_ds,
-                 nonlinearity=nonlinearity)
+                 nonlinearity=nonlinearity,
+                 num_batches=num_batches)
 
-    def log_posterior(weights): return log_prob(weights, X, Y)
+    '''Defines log posterior with minibatching'''
 
-    both_runs = []
+    if batch_size == 0:
+        # full dataset
+        def log_posterior(weights, iter):
+            return log_prob(weights, X, Y)
+
+    else:
+        # minibatching
+        def batch_indices(iter):
+            # same seed/batches indices for one iteration over X
+            seed, effective_iter = divmod(iter, num_batches)
+            torch.manual_seed(seed)
+            batches = torch.split(torch.randperm(X.shape[0]), batch_size)
+            return batches[effective_iter]
+
+        def log_posterior(weights, iter):
+            batch = batch_indices(iter)
+            return log_prob(weights, X[batch], Y[batch])
+
 
     '''
     Inference functions
     '''
+
+    both_runs = []
 
     '''Computes held-out log likelihood of x,y given distribution implied by param'''
     def held_out_loglikelihood(x, y, param):
@@ -130,17 +152,18 @@ def run_experiment(experiment):
             for constraint in y_constr:
                 d *= psi(constraint(x, y), tau_c, tau_g)
             c += d
+
         return c.sum()
 
     '''Runs optimization algorithm for one random restart'''
     def run_optimization(r, constrained):
-        
+                
         variational_objective, evidence_lower_bound = \
             bayes_by_backprop_variational_inference(
-                log_posterior, violation, num_samples=bbb_num_samples, constrained=constrained)
+                log_posterior, violation, num_samples=bbb_num_samples, constrained=constrained, num_batches=num_batches)
 
         # initialization
-        print(100 * '-')
+        print(130 * '-')
         init_mean = mean_param * torch.randn(num_weights, 1)
         init_log_std = std_param * torch.ones(num_weights, 1)
         params = Variable(
@@ -174,14 +197,14 @@ def run_experiment(experiment):
 
             # optimization
             optimizer.zero_grad()
-            loss = variational_objective(params)
+            loss = variational_objective(params, t)
             loss.backward()
             optimizer.step()
 
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
-                elbo = evidence_lower_bound(params)
+                elbo = evidence_lower_bound(params, t)
                 viol = violation(params).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())

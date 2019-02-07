@@ -17,7 +17,7 @@ together with our constrained version prior formulation
 '''
 
 
-def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, constrained=False):
+def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, constrained=False, num_batches=1):
     
     '''Fully-factored Gaussian'''
     def unpack_params(params):
@@ -32,25 +32,30 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
     '''
 
     def logq(log_std):
-        return - torch.sum(0.5 + 0.5 * torch.log(2 * torch.tensor(math.pi)) + log_std) #(1.0 + log_std.exp()).log().log())
+        return - torch.sum(0.5 + 0.5 * torch.log(2 * torch.tensor(math.pi)) + log_std) 
 
     '''
     Stochastic estimate of variational objective (neg. ELBO)
     using reparameterization trick (not REINFORCE/score function)
+
+    corrects for batch_size/num_batches by scaling KL[q(w)|p(w)]
+    as explained in https://arxiv.org/pdf/1505.05424.pdf  
+
+    iter is needed for batch training
     '''
 
-    def evidence_lower_bound(params):
+    def evidence_lower_bound(params, iter):
         mean, log_std = unpack_params(params)
         weights = mean + torch.randn(num_samples,
-                                     params.shape[0]) * log_std.exp() #torch.log(1.0 + log_std.exp())
-        elbo = (logp(weights) - logq(log_std)).mean()
+                                     params.shape[0]) * log_std.exp() 
+        elbo = (logp(weights, iter) - logq(log_std) / num_batches).mean()
         return elbo
 
-    def variational_objective_regular(params):
-        return - evidence_lower_bound(params)
+    def variational_objective_regular(params, iter):
+        return - evidence_lower_bound(params, iter)
     
-    def variational_objective_constrained(params):
-        return - evidence_lower_bound(params) + violation(params)
+    def variational_objective_constrained(params, iter):
+        return - evidence_lower_bound(params, iter) + violation(params)
 
     
     if constrained:

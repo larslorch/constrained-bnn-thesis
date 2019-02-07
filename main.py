@@ -38,9 +38,7 @@ TODOs
 '''
 
 
-if __name__ == '__main__':
-
-    from exp_boston_housing import all_experiments
+def main(all_experiments):
 
     for id, experiment in enumerate(all_experiments):
 
@@ -98,7 +96,6 @@ if __name__ == '__main__':
                         best, current_directory, descr)
 
 
+if __name__ == '__main__':
 
-
-
-
+    print('Run main() function in experiment file.')
