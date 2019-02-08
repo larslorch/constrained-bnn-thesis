@@ -12,10 +12,10 @@ import torch
 # stable computation using tanh
 
 def sig(z, tau_c):
-    return 0.5 * (torch.tanh(tau_c * z) + 1) 
+    return 0.5 * (torch.tanh(- tau_c * z) + 1) 
 
 def psi(z, tau_c, tau_g):
-    return 0.25 * (torch.tanh(tau_c * z) + 1) * (torch.tanh(tau_g * z) + 1)
+    return 0.25 * (torch.tanh(- tau_c * z) + 1) * (torch.tanh(- tau_g * z) + 1)
 
 
 '''

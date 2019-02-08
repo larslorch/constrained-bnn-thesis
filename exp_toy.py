@@ -11,6 +11,7 @@ from torch.autograd import Variable
 
 import copy
 
+from utils import *
 from plot import *
 from main import main
 from hmc import main_HMC
@@ -76,15 +77,29 @@ i.e. x is (datapoints, in_dim)
 
 '''
 
+# x < 0.5 : y < 4.5
+# x < 0.5 : 2.5 < y
+
+def x_c0(x, y): return x - 0.5
+def y_c0(x, y): return y - 4.5
+def y_c1(x, y): return - y + 2.5
+
+# x > 0.5 : y < 4.5
+# x > 0.5 : 2.5 < y
+
+
+def x_c1(x, y): return - x + 0.5
+def y_c2(x, y): return y - 4.5
+def y_c3(x, y): return - y + 2.5
 
 constr = [
+    ([x_c0], [y_c0, y_c1]),
+    ([x_c1], [y_c2, y_c3]),
 ]
 
 
 def constrained_region_sampler(s):
-    return torch.cat((ds.Uniform(-14, -6).sample(sample_shape=torch.Size([round(s / 2)])),
-                      ds.Uniform(4, 12).sample(sample_shape=torch.Size([round(s / 2)])))).unsqueeze(1)
-
+    return ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([s, 1]))
 
 '''
 Experiment dictionary 
@@ -100,14 +115,14 @@ all_experiments = []
 prototype = {
     'title': '6pt_toy_example',
     'nn': {
-        'architecture': [n_dim, 20, 1],
+        'architecture': [n_dim, 15, 1],
         'nonlinearity': rbf,
         'prior_ds': ds.Normal(0.0, 3.0),
     },
     'data': {
         'noise_ds': ds.Normal(0.0, 0.1),
         'plt_x_domain': (-5, 5),
-        'plt_y_domain': (-15, 12),
+        'plt_y_domain': (-12, 12),
         'integral_constrained_region': 0,
         'X':  X,
         'Y':  Y,
@@ -121,10 +136,7 @@ prototype = {
     'constraints': {
         'constr': constr,
         'plot': [
-            # DrawRectangle(bottom_left=(-20, -0.7), top_right=(-6, 20)),
-            # DrawRectangle(bottom_left=(-20, -5), top_right=(-6, -1.3)),
-            # DrawRectangle(bottom_left=(4, -20), top_right=(20, 0.7)),
-            # DrawRectangle(bottom_left=(4, 1.3), top_right=(20, 5)),
+            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
         ],
     },
     'bbb': {
@@ -141,9 +153,9 @@ prototype = {
             'restarts': 1,
             'reporting_every_': 50,
             'cores_used': 1,
-            'violation_samples': 500,
+            'violation_samples': 30,
             'tau_tuple': (15.0, 2.0),
-            'gamma': 20000,
+            'gamma': 30,
             'constrained_region_sampler': constrained_region_sampler,
         },
         'initialize_q': {

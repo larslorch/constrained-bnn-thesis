@@ -11,6 +11,7 @@ import torch.distributions as ds
 from torch.autograd import Variable
 
 from bnn import make_BNN
+from utils import *
 
 '''
 Implements Hamiltonian Monte Carlo for a given distribution p(x)
@@ -47,7 +48,7 @@ def make_HMC_sampler(logp, L, epsilon, loglik=None):
     '''Draws N samples x(i) from the target distribution  p(x) / Z using
        the Metropolis-Hastings algorithm with HMC proposals'''
 
-    def sample_from_target(N, x_init):
+    def sample_from_target(N, x_init, live=False):
         
         samples = torch.zeros(N, *x_init.shape)
         samples[0] = x_init
@@ -203,43 +204,104 @@ def main_HMC(all_experiments):
         num_batches = int(torch.ceil(torch.tensor(
             X.shape[0] / batch_size))) if batch_size else 1
 
-        '''Define BNN'''
+        '''Constraints'''
+        gamma = experiment['bbb']['constrained']['gamma']
+        tau = experiment['bbb']['constrained']['tau_tuple']
+        violation_samples = experiment['bbb']['constrained']['violation_samples']
+        constrained_region_sampler = experiment['bbb']['constrained']['constrained_region_sampler']
+        constr = experiment['constraints']['constr']
+        constr_plot = experiment['constraints']['plot']
+
+        '''Define BNN (constrained and unconstrained)'''
         num_weights, forward, log_prob = \
             make_BNN(layer_sizes=architecture,
                     prior_ds=prior_ds,
                     noise_ds=noise_ds,
                     nonlinearity=nonlinearity,
                     num_batches=num_batches)
+    
+        '''Computes expected violation via constraint function, of distribution implied by param'''
+        def violation(weights):
+            x = constrained_region_sampler(violation_samples)
+            y = forward(weights, x)
+
+            tau_c, tau_g = tau
+            c = torch.zeros(y.shape)
+            for region in constr:
+                x_consts, y_constr = region
+                d = torch.ones(y.shape)
+                for constraint in x_consts:
+                    d *= sig(constraint(x, y), tau_c)
+                for constraint in y_constr:
+                    d *= psi(constraint(x, y), tau_c, tau_g)
+                c += d
+            
+            l = gamma * c.sum() / y.numel()
+            # print('---------')
+            # print(y)
+            # print(l)
+            return l
 
         def target(weights):
-            return log_prob(weights, X, Y)
+            # print(log_prob(weights, X, Y), violation(weights))
+            return log_prob(weights, X, Y)  - violation(weights) # sign must be neg. but is wrong in writeup
+
 
         '''HMC'''
         stepsize = 0.01
         steps = 30
-        hmc_samples = 1000
-        burnin = 100
+        hmc_samples = 2000
+        burnin = 1000
+        random_restarts = 5
+        thinning = 5
 
+        print('{} HMC restarts.'.format(random_restarts))
         sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
-        w_init = torch.zeros(1, num_weights) # batch of 1 for weights
-        ws, acceptance_probs = sampler(hmc_samples, w_init)
-        ws = ws[burnin:]  # remove burn-in
-        ws = ws.squeeze() # align batch dim
+        all_samples = torch.zeros(random_restarts, hmc_samples, num_weights)
+        for r in range(random_restarts):
 
-        print('Average acceptance probability: {}'.format(acceptance_probs.mean()))
+            w_init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
+                * torch.randn(1, num_weights) # batch of 1 for weights
+            ws, acceptance_probs = sampler(hmc_samples, w_init)         
+            ws = ws.squeeze() # align batch dim
+            all_samples[r] = ws
+            print('Average acceptance probability after burnin: {}'.format(
+                acceptance_probs[burnin:].mean()))
 
-        y_pred = forward(ws, X_plot)
+        # burnin and thinning 
+        all_samples = all_samples[:, burnin:]  
+        all_samples = all_samples[:, torch.arange(0, hmc_samples - burnin - 1, thinning), :]
+
+        # align restarts into one
+        all_samples = all_samples.reshape(-1, num_weights)
+
+        y_pred = forward(all_samples, X_plot)
         mean = y_pred.mean(0, keepdim=True)
         std = y_pred.std(0, keepdim=True)
-    
+
         '''Approximate posterior predictive for test points'''
-        plt.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='black')
-        plt.fill_between(X_plot.squeeze().numpy(),
-                         (mean - 2 * std).squeeze().numpy(),
-                         (mean + 2 * std).squeeze().numpy(),
-                        color='black',
-                        alpha=0.3)
-        plt.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
-        plt.title(
-            'Posterior predictive for {} BNN using HMC'.format(architecture))
-        plt.show()
+        samples_only = True
+
+        fig, ax = plt.subplots()
+        for p in constr_plot:
+            ax.add_patch(p.get())
+        if samples_only:
+            ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
+                     y_pred.squeeze().transpose(0, 1).numpy(), 
+                     c='blue',
+                     alpha=0.02)
+            ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+            ax.set_title(
+                 'Function samples for {} BNN using HMC'.format(architecture))
+            plt.show()
+        else:
+            plt.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='black')
+            plt.fill_between(X_plot.squeeze().numpy(),
+                            (mean - 2 * std).squeeze().numpy(),
+                            (mean + 2 * std).squeeze().numpy(),
+                            color='black',
+                            alpha=0.3)
+            plt.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+            plt.title(
+                'Posterior predictive for {} BNN using HMC'.format(architecture))
+            plt.show()
