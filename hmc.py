@@ -280,28 +280,26 @@ def main_HMC(all_experiments):
         std = y_pred.std(0, keepdim=True)
 
         '''Approximate posterior predictive for test points'''
-        samples_only = True
 
         fig, ax = plt.subplots()
         for p in constr_plot:
             ax.add_patch(p.get())
-        if samples_only:
-            ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
-                     y_pred.squeeze().transpose(0, 1).numpy(), 
-                     c='blue',
-                     alpha=0.02)
-            ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
-            ax.set_title(
-                 'Function samples for {} BNN using HMC'.format(architecture))
-            plt.show()
-        else:
-            plt.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='black')
-            plt.fill_between(X_plot.squeeze().numpy(),
-                            (mean - 2 * std).squeeze().numpy(),
-                            (mean + 2 * std).squeeze().numpy(),
-                            color='black',
-                            alpha=0.3)
-            plt.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
-            plt.title(
-                'Posterior predictive for {} BNN using HMC'.format(architecture))
-            plt.show()
+        ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
+                    y_pred.squeeze().transpose(0, 1).numpy(), 
+                    c='blue',
+                    alpha=0.02)
+        ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+        ax.set_title(
+                'Function samples for {} BNN using HMC'.format(architecture))
+        plt.show()
+
+        # plt.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='black')
+        # plt.fill_between(X_plot.squeeze().numpy(),
+        #                 (mean - 2 * std).squeeze().numpy(),
+        #                 (mean + 2 * std).squeeze().numpy(),
+        #                 color='black',
+        #                 alpha=0.3)
+        # plt.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+        # plt.title(
+        #     'Posterior predictive for {} BNN using HMC'.format(architecture))
+        # plt.show()

@@ -68,7 +68,7 @@ Y_ood = ground_truth(X_ood)
 
 
 '''
-Constraints
+Constraints: f(x, y) <= 0
 
 Have to be broadcastable!!
 i.e. x is (datapoints, in_dim)
@@ -77,29 +77,43 @@ i.e. x is (datapoints, in_dim)
 
 '''
 
-# x < 0.5 : y < 4.5
-# x < 0.5 : 2.5 < y
+# DON'T FORGET: 
+#   1)  Double check constraint def.
+#   2)  constaint sampler
+#   3)  plot rectangle
 
-def x_c0(x, y): return x - 0.5
-def y_c0(x, y): return y - 4.5
-def y_c1(x, y): return - y + 2.5
+# right
+def x_c00(x, y): return x - 4
+def x_c01(x, y): return - x + 3
+def y_c02(x, y): return y - 1.5
+def y_c03(x, y): return - y - 0.5
 
-# x > 0.5 : y < 4.5
-# x > 0.5 : 2.5 < y
+# center
+def x_c10(x, y): return x - 0.5
+def x_c11(x, y): return - x - 0.5
+def y_c12(x, y): return y - 4.5
+def y_c13(x, y): return - y + 2.5
 
-
-def x_c1(x, y): return - x + 0.5
-def y_c2(x, y): return y - 4.5
-def y_c3(x, y): return - y + 2.5
+# left
+def x_c20(x, y): return x + 3
+def x_c21(x, y): return - x - 4
+def y_c22(x, y): return y + 1.5
+def y_c23(x, y): return - y - 3.5
+    
 
 constr = [
-    ([x_c0], [y_c0, y_c1]),
-    ([x_c1], [y_c2, y_c3]),
+    ([x_c00, x_c01], [y_c02, y_c03]),
+    ([x_c10, x_c11], [y_c12, y_c13]),
+    ([x_c20, x_c21], [y_c22, y_c23]),
 ]
 
 
 def constrained_region_sampler(s):
-    return ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([s, 1]))
+    return torch.cat([
+        ds.Uniform(3, 4).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
+        ds.Uniform(-4, -3).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
+        ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([int(round(s / 3)), 1]))], dim=0)
+
 
 '''
 Experiment dictionary 
@@ -136,7 +150,9 @@ prototype = {
     'constraints': {
         'constr': constr,
         'plot': [
-            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
+            DrawRectangle(bottom_left=(3, -0.5), top_right=(4, 1.5)),
+            DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
+            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5))
         ],
     },
     'bbb': {
@@ -154,7 +170,7 @@ prototype = {
             'reporting_every_': 50,
             'cores_used': 1,
             'violation_samples': 30,
-            'tau_tuple': (15.0, 2.0),
+            'tau_tuple': (10.0, 1.0),
             'gamma': 30,
             'constrained_region_sampler': constrained_region_sampler,
         },
