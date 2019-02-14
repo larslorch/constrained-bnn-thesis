@@ -114,6 +114,24 @@ def constrained_region_sampler(s):
         ds.Uniform(-4, -3).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
         ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([int(round(s / 3)), 1]))], dim=0)
 
+    # return ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([s, 1]))
+
+
+
+'''Darting HMC Modes Preprocessed'''
+darting_points = torch.tensor(
+    [[4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [1.6633, -1.4636, -0.5259,  0.4725,  1.3515],
+        [-0.3216, -0.3437,  0.7332, -1.0085, -0.6098],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342],
+        [4.3255,  3.6297,  6.3301, -3.4118,  1.8342]]
+)
+
 
 '''
 Experiment dictionary 
@@ -151,8 +169,8 @@ prototype = {
         'constr': constr,
         'plot': [
             DrawRectangle(bottom_left=(3, -0.5), top_right=(4, 1.5)),
+            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
             DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
-            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5))
         ],
     },
     'bbb': {
@@ -183,6 +201,31 @@ prototype = {
             'constrained_region_samples_for_pp_violation': 50,
         }
 
+    },
+    'hmc' : {
+        'darting' : {
+            'bool' : True,
+            'preprocessing' : {
+                'bool' : False,
+                'show_mode_cluster_analysis': True,
+                'searched_modes': 30,
+                'search_SGD_lr' : 1e-6,
+                'mode_searching_convergence': 5.0,
+                'pca_dim' : 5,
+                'k_means_tried' : 20,
+                'k_means_selected' : 10,
+                'preprocessed_regions': darting_points,
+            },
+            'algorithm' : {
+                'darting_region_radius' : 0.005,  
+            },
+            
+        },
+        'stepsize' : 0.01,
+        'steps' : 30,
+        'hmc_samples' : 100,
+        'burnin' : 0,
+        'thinning' : 1,
     },
     'experiment': {
         'run_regular_BbB': True,

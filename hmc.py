@@ -11,6 +11,7 @@ import torch.distributions as ds
 from torch.autograd import Variable
 
 from bnn import make_BNN
+from darting_hmc import make_darting_HMC_sampler
 from utils import *
 
 '''
@@ -235,47 +236,44 @@ def main_HMC(all_experiments):
                 for constraint in y_constr:
                     d *= psi(constraint(x, y), tau_c, tau_g)
                 c += d
-            
             l = gamma * c.sum() / y.numel()
-            # print('---------')
-            # print(y)
-            # print(l)
             return l
 
         def target(weights):
-            # print(log_prob(weights, X, Y), violation(weights))
-            return log_prob(weights, X, Y)  - violation(weights) # sign must be neg. but is wrong in writeup
+            return log_prob(weights, X, Y)  - violation(weights) 
 
 
         '''HMC'''
-        stepsize = 0.01
-        steps = 30
-        hmc_samples = 2000
-        burnin = 1000
-        random_restarts = 5
-        thinning = 5
+        stepsize = experiment['hmc']['stepsize']
+        steps = experiment['hmc']['steps']
+        hmc_samples = experiment['hmc']['hmc_samples']
+        burnin = experiment['hmc']['burnin']
+        thinning = experiment['hmc']['thinning']
 
-        print('{} HMC restarts.'.format(random_restarts))
-        sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
-        all_samples = torch.zeros(random_restarts, hmc_samples, num_weights)
-        for r in range(random_restarts):
+        darting = experiment['hmc']['darting']['bool']
+        if darting:
+            print('Darting HMC.')
 
-            w_init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
-                * torch.randn(1, num_weights) # batch of 1 for weights
-            ws, acceptance_probs = sampler(hmc_samples, w_init)         
-            ws = ws.squeeze() # align batch dim
-            all_samples[r] = ws
-            print('Average acceptance probability after burnin: {}'.format(
-                acceptance_probs[burnin:].mean()))
+            dct = experiment['hmc']['darting']
+            dct['num_weights'] = num_weights
+            
+            sampler = make_darting_HMC_sampler(target, steps, stepsize, dct, loglik=None)
+        else:
+            print('HMC.')
+            sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
+
+        init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
+               * torch.randn(1, num_weights) # batch of 1 for BNN weights
+        samples, acceptance_probs = sampler(hmc_samples, init)
+        samples = samples.squeeze()  # align batch dim
+        print('Average acceptance probability after burnin: {}'.format(
+            acceptance_probs[burnin:].mean()))
 
         # burnin and thinning 
-        all_samples = all_samples[:, burnin:]  
-        all_samples = all_samples[:, torch.arange(0, hmc_samples - burnin - 1, thinning), :]
+        samples = samples[burnin:, :]  
+        samples = samples[torch.arange(0, hmc_samples - burnin - 1, thinning), :]
 
-        # align restarts into one
-        all_samples = all_samples.reshape(-1, num_weights)
-
-        y_pred = forward(all_samples, X_plot)
+        y_pred = forward(samples, X_plot)
         mean = y_pred.mean(0, keepdim=True)
         std = y_pred.std(0, keepdim=True)
 
