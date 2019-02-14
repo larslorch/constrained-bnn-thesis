@@ -134,11 +134,26 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None):
     # Use pre-loaded darting points
     else: 
         darting_points = searched_modes = dct['preprocessing']['preprocessed_regions']
-        
 
-    print(darting_points)
 
-    # i.e. run k means with desired k 50 times, based on centers find closest real BNN modes, make those the darting regions
+    # import darting settings
+    darting_region_radius = dct['algorithm']['darting_region_radius']
+
+    # Samples uniformly at random from ball around center
+    def sample_Unif_ball(center, radius=darting_region_radius):
+        u = torch.rand(1) * radius
+        dir = torch.randn(center.shape) 
+        dir_ = dir / torch.norm(dir, p=2)
+        return center + u * dir_
+
+    # Samples from darting region k
+    def sample_region(k):
+        return sample_Unif_ball(darting_points[k])
+
+    print(sample_region(2))
+
+    # Ready to iplement generalized darting mcmc
+
     exit(0)
 
     '''Generalized Darting Monte Carlo with HMC'''
