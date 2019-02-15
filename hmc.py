@@ -225,18 +225,15 @@ def main_HMC(all_experiments):
         def violation(weights):
             x = constrained_region_sampler(violation_samples)
             y = forward(weights, x)
-
             tau_c, tau_g = tau
             c = torch.zeros(y.shape)
             for region in constr:
-                x_consts, y_constr = region
                 d = torch.ones(y.shape)
-                for constraint in x_consts:
-                    d *= sig(constraint(x, y), tau_c)
-                for constraint in y_constr:
+                for constraint in region:
                     d *= psi(constraint(x, y), tau_c, tau_g)
                 c += d
-            l = gamma * c.sum() / y.numel()
+            # l = gamma * c.sum() / y.numel()
+            l = gamma * c.max()
             return l
 
         def target(weights):

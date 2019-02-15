@@ -46,7 +46,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
         # find m modes of log p(x)
         modes = torch.zeros(searched_modes, num_weights)
         for m in tqdm(range(searched_modes)):
-            scale = 10
+            scale = 2
             w = scale * torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
                     * torch.randn(1, num_weights)  # batch of 1 for BNN weights
             w.requires_grad_(True)
@@ -134,13 +134,14 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                 best_sse = sse
                 darting_points = centers
         
-        pprint.pprint(darting_points)
-        
+        torch.save(darting_points, 'darting_cache/' +
+                   dct['preprocessing']['file_name'] + '.pt')        
         
     # Use pre-loaded darting points
     else: 
-        darting_points = searched_modes = dct['preprocessing']['preprocessed_regions']
-
+        darting_points = torch.load('darting_cache/' +
+                                    dct['preprocessing']['file_name'] + '.pt')
+       
     # darting settings
     darting_region_radius = dct['algorithm']['darting_region_radius']
     p_check = torch.tensor(dct['algorithm']['p_check'])
@@ -178,7 +179,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
             y_pred.squeeze().transpose(0, 1).numpy())
     ax.set_title(
         'Functions corresponding to darting modes')
-    # plt.show()
+    plt.show()
     plt.close('all')
 
 
