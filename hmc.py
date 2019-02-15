@@ -257,7 +257,7 @@ def main_HMC(all_experiments):
             dct = experiment['hmc']['darting']
             dct['num_weights'] = num_weights
             
-            sampler = make_darting_HMC_sampler(target, steps, stepsize, dct, loglik=None)
+            sampler = make_darting_HMC_sampler(target, steps, stepsize, dct, loglik=None, forward=forward, experiment=experiment)
         else:
             print('HMC.')
             sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
