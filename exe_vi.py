@@ -37,34 +37,30 @@ def run_experiment(experiment):
 
 
     '''BbB settings'''
-    bbb_num_samples = experiment['bbb']['BbB_rv_samples']
-    batch_size = experiment['bbb']['batch_size']
+    bbb_num_samples = experiment['vi']['rv_samples']
+    batch_size = experiment['vi']['batch_size']
     num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
-    lr = experiment['bbb']['lr']
+    lr = experiment['vi']['lr']
 
 
     # regular
-    iterations_regular = experiment['bbb']['regular']['iterations']
-    restarts_regular = experiment['bbb']['regular']['restarts']
-    reporting_every_regular_ = experiment['bbb']['regular']['reporting_every_']
-    cores_regular = experiment['bbb']['regular']['cores_used']
+    iterations_regular = experiment['vi']['regular']['iterations']
+    restarts_regular = experiment['vi']['regular']['restarts']
+    reporting_every_regular_ = experiment['vi']['regular']['reporting_every_']
+    cores_regular = experiment['vi']['regular']['cores_used']
 
     # constrained
-    iterations_constr = experiment['bbb']['constrained']['iterations']
-    restarts_constr = experiment['bbb']['constrained']['restarts']
-    reporting_every_constr_ = experiment['bbb']['constrained']['reporting_every_']
-    cores_constr = experiment['bbb']['constrained']['cores_used']
-    gamma = experiment['bbb']['constrained']['gamma']
-    tau = experiment['bbb']['constrained']['tau_tuple']
-    violation_samples = experiment['bbb']['constrained']['violation_samples']
-    constrained_region_sampler = experiment['bbb']['constrained']['constrained_region_sampler']
+    iterations_constr = experiment['vi']['constrained']['iterations']
+    restarts_constr = experiment['vi']['constrained']['restarts']
+    reporting_every_constr_ = experiment['vi']['constrained']['reporting_every_']
+    cores_constr = experiment['vi']['constrained']['cores_used']
+    gamma = experiment['vi']['constrained']['gamma']
+    tau = experiment['vi']['constrained']['tau_tuple']
+    violation_samples = experiment['vi']['constrained']['violation_samples']
+    constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
     constr = experiment['constraints']['constr']
 
-    # q random initialization
-    mean_param = experiment['bbb']['initialize_q']['mean']
-    std_param = experiment['bbb']['initialize_q']['std']
-
-    S = experiment['bbb']['posterior_predictive_analysis']['posterior_samples']
+    S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
 
     '''Experiment settings'''
     regular_BbB = experiment['experiment']['run_regular_BbB']
@@ -150,8 +146,8 @@ def run_experiment(experiment):
         # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
         return l
 
-    '''Runs optimization algorithm for one random restart'''
-    def run_optimization(r, constrained):
+    '''Runs Bayes by Backprop for one random restart'''
+    def run_bbb(r, constrained):
                 
         variational_objective, evidence_lower_bound = \
             bayes_by_backprop_variational_inference(
@@ -159,8 +155,10 @@ def run_experiment(experiment):
 
         # initialization
         print(130 * '-')
-        init_mean = mean_param * torch.randn(num_weights, 1)
-        init_log_std = std_param * torch.ones(num_weights, 1)
+        init_mean = experiment['vi']['bbb_param']['initialize_q']['mean'] * \
+            torch.randn(num_weights, 1)
+        init_log_std = experiment['vi']['bbb_param']['initialize_q']['std'] * \
+            torch.ones(num_weights, 1)
         params = Variable(
             torch.cat([init_mean, init_log_std], dim=1),
             requires_grad=True)
@@ -234,8 +232,26 @@ def run_experiment(experiment):
 
         return params.detach(), loss.detach(), training_evaluation
 
+    '''Runs nonparametric VI for one random restart'''
+    def run_npv(r, constrained):
+
+        print('Not implemented.')
+        exit(1)
+        pass
+        # return params.detach(), loss.detach(), training_evaluation
+                
+
+
     '''Runs multiple restarts'''
     def run_all(constrained):
+
+        # choose alg
+        algs = {
+            'bbb' : run_bbb,
+            'npv': run_npv,
+        }
+        code = experiment['vi']['alg']
+        run_alg = algs[code]
 
         # specific settings
         if constrained:
@@ -244,6 +260,7 @@ def run_experiment(experiment):
         else:
             restarts = restarts_regular
             cores = cores_regular
+
 
         if multithread:
             
@@ -256,7 +273,7 @@ def run_experiment(experiment):
                 core_use, mp.cpu_count()))
 
             params, best_objectives, training_evaluations = [], [], []
-            for param, obj, eval in p.map(lambda r: run_optimization(r, constrained), range(restarts)):
+            for param, obj, eval in p.map(lambda r: run_alg(r, constrained), range(restarts)):
                 params.append(param)
                 best_objectives.append(obj)
                 training_evaluations.append(eval)
@@ -266,7 +283,7 @@ def run_experiment(experiment):
             print('Not multithreading.')
             
             params, best_objectives, training_evaluations = [], [], []
-            for param, obj, eval in map(lambda r: run_optimization(r, constrained), range(restarts)):
+            for param, obj, eval in map(lambda r: run_alg(r, constrained), range(restarts)):
                 params.append(param)
                 best_objectives.append(obj)
                 training_evaluations.append(eval)
@@ -305,10 +322,10 @@ This is an interpretable evaluation metric rather than the violation part of the
 
 def compute_posterior_predictive_violation(params, prediction, experiment):
 
-    S = experiment['bbb']['posterior_predictive_analysis']['posterior_samples']
-    T = experiment['bbb']['posterior_predictive_analysis']['constrained_region_samples_for_pp_violation']
+    S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
+    T = experiment['vi']['posterior_predictive_analysis']['constrained_region_samples_for_pp_violation']
 
-    constrained_region_sampler = experiment['bbb']['constrained']['constrained_region_sampler']
+    constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
     integral_constrained_region = experiment['data']['integral_constrained_region']
 
     constr = experiment['constraints']['constr']

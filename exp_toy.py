@@ -14,8 +14,8 @@ import copy
 
 from utils import *
 from plot import *
-from main import main
-from hmc import main_HMC
+from main_vi import main_vi
+from main_hmc import main_hmc
 
 
 '''
@@ -168,8 +168,21 @@ prototype = {
            #  DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
         ],
     },
-    'bbb': {
-        'BbB_rv_samples': 100,
+    'vi': { # alg options: bbb, npv
+        'alg' : 'npv',
+        'bbb_param' : {
+            'initialize_q': {
+                'mean': 1.0,  # * torch.randn
+                'std': -2.5,  # * torch.ones
+            },
+        },
+        'npv_param': {
+            'initialize_q': {
+                'mean': 1.0,  # * torch.randn
+                'std': -2.5,  # * torch.ones
+            },
+        },
+        'rv_samples': 100,
         'batch_size': 0,  # batch_size = 0 implies full dataset training
         'lr' : 0.01,
         'regular': {
@@ -187,10 +200,6 @@ prototype = {
             'tau_tuple': (15.0, 2.0),
             'gamma': 1000,
             'constrained_region_sampler': constrained_region_sampler,
-        },
-        'initialize_q': {
-            'mean': 1.0,  # * torch.randn
-            'std': -2.5,  # * torch.ones
         },
         'posterior_predictive_analysis': {
             'posterior_samples': 50,
@@ -239,6 +248,6 @@ prototype = {
 
 all_experiments.append(prototype)
 
-main(all_experiments)
-# main_HMC(all_experiments)
+main_vi(all_experiments)
+# main_hmc(all_experiments)
 

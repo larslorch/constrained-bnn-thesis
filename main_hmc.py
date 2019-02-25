@@ -183,7 +183,7 @@ def make_HMC_sampler(logp, L, epsilon, loglik=None):
     return sample_from_target
 
 
-def main_HMC(all_experiments):
+def main_hmc(all_experiments):
 
     for id, experiment in enumerate(all_experiments):
 

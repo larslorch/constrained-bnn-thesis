@@ -19,17 +19,17 @@ def experiment_to_string(experiment):
 
     # fields of experiment dict to be printed
     regular_BbB = [
-        ('Iterations', experiment['bbb']['regular']['iterations']),
+        ('Iterations', experiment['vi']['regular']['iterations']),
         ('BbB r.v. samples for grad.',
-         experiment['bbb']['BbB_rv_samples']),
+         experiment['vi']['rv_samples']),
     ]
 
     constrained_BbB = [
-        ('Iterations', experiment['bbb']['constrained']['iterations']),
+        ('Iterations', experiment['vi']['constrained']['iterations']),
         ('BbB r.v. samples for gradient',
-         experiment['bbb']['BbB_rv_samples']),
-        ('Gamma', experiment['bbb']['constrained']['gamma']),
-        ('Tau', experiment['bbb']['constrained']['tau_tuple']),
+         experiment['vi']['rv_samples']),
+        ('Gamma', experiment['vi']['constrained']['gamma']),
+        ('Tau', experiment['vi']['constrained']['tau_tuple']),
     ]
 
     nn = [

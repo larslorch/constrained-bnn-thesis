@@ -20,7 +20,7 @@ from torch.autograd import Variable
 
 from plot import *
 from utils import *
-from evaluation import *
+from exe_vi import *
 from bbb import bayes_by_backprop_variational_inference
 from bnn import make_BNN
 
@@ -38,7 +38,7 @@ TODOs
 '''
 
 
-def main(all_experiments):
+def main_vi(all_experiments):
 
     for id, experiment in enumerate(all_experiments):
 

@@ -208,7 +208,7 @@ def plot_training_evaluation(experiment, training_evaluations, plot_directory, d
 
     cutoff = 1  # ignore first <cutoff> datapoints
 
-    step = experiment['bbb']['regular']['reporting_every_']
+    step = experiment['vi']['regular']['reporting_every_']
     start = cutoff * step
     end = (len(objs[0])) * step
 
