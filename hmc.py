@@ -232,8 +232,8 @@ def main_HMC(all_experiments):
                 for constraint in region:
                     d *= psi(constraint(x, y), tau_c, tau_g)
                 c += d
-            # l = gamma * c.sum() / y.numel()
-            l = gamma * c.max()
+            l = gamma * c.sum() / y.numel()
+            # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
             return l
 
         def target(weights):

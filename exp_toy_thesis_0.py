@@ -27,7 +27,7 @@ class ReLUActivation(torch.autograd.Function):
 
     def __str__(self):
         return 'relu'
-
+        
     @staticmethod
     def forward(ctx, input):
         ctx.save_for_backward(input)
@@ -41,37 +41,36 @@ class ReLUActivation(torch.autograd.Function):
         return grad_input
 
 
-def rbf(x): 
-    return torch.exp(- x.pow(2))
-
+def rbf(x): return torch.exp(- x.pow(2))
 relu = ReLUActivation.apply
-
-def tanh(x): 
-    return x.tanh(x)
-
-def softrelu(x): 
-    return torch.log(1.0 + x.exp())
+def tanh(x): return x.tanh(x)
+def softrelu(x): return torch.log(1.0 + x.exp())
 
 
 # Data
 
-N, n_dim = 10, 1
-
+N, n_dim = 1, 1
 
 def ground_truth(x):
-    return - x.pow(4) + 3 * x.pow(2) + 1
+    return torch.sin(5 * x) * torch.exp( - x.pow(2))
 
 
-X = torch.tensor([-2, -1.8, -1, 1, 1.8, 2]).unsqueeze(1)
+# s = ds.Normal(0, 0.5).sample(torch.Size([10, 1]))
+    
+X = torch.tensor([-2, -1.8, -1.7, -1.6, -1.4, -1.25, -0.5, 0, 0.5, 1.25, 1.4, 1.6, 1.7, 1.8, 2]).unsqueeze(1)
+X_1 = torch.tensor([[-0.9327], [-0.4824], [-0.7757], [0.6039], [0.1694], [0.0885], [-0.5754], [0.0194], [0.0699],  [1.1992]])
+X_2 = torch.tensor([[-0.8412], [-0.8361], [-0.6575], [-0.1561], [0.3464], [-0.3367], [0.8802], [-0.2293], [0.3770], [0.4640]])
+
+X = X_1
 Y = ground_truth(X)
 
-X_plot = torch.linspace(-5, 5, steps=100).unsqueeze(1)
+X_plot = torch.linspace(-4.5, 4.5, steps=100).unsqueeze(1)
 Y_plot = ground_truth(X_plot)
 
 X_id = torch.tensor([-1.9, -1.5, 0.5, 0.0, 0.5, 1.5, 1.9]).unsqueeze(1)
 Y_id = ground_truth(X_id)
 
-X_ood = torch.tensor([-4, -3, -2.5, 2.5, 3, 4]).unsqueeze(1)
+X_ood = torch.tensor([-3, -2.8, -2.5, 2.5, 2.8, 3]).unsqueeze(1)
 Y_ood = ground_truth(X_ood)
 
 
@@ -85,7 +84,7 @@ i.e. x is (datapoints, in_dim)
 
 '''
 
-# DON'T FORGET:
+# DON'T FORGET: 
 #   1)  Double check constraint def.
 #   2)  constaint sampler
 #   3)  plot rectangle
@@ -107,24 +106,22 @@ def x_c20(x, y): return x + 3
 def x_c21(x, y): return - x - 4
 def y_c22(x, y): return y + 1.5
 def y_c23(x, y): return - y - 3.5
-
+    
 
 constr = [
     # [x_c00, x_c01, y_c02, y_c03],
-    [x_c10, x_c11, y_c12, y_c13],
+    # [x_c10, x_c11, y_c12, y_c13],
     # [x_c20, x_c21, y_c22, y_c23]
 ]
 
 
 def constrained_region_sampler(s):
-    # out = torch.cat([
-    #     ds.Uniform(3, 4).sample(
-    #         sample_shape=torch.Size([int(round(s / 3)), 1])),
-    #     ds.Uniform(-4, -
-    #                3).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
-    #     ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([int(round(s / 3)), 1]))], dim=0)
-
-    out = ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([s, 1]))
+    out = torch.cat([
+        ds.Uniform(3, 4).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
+        ds.Uniform(-4, -3).sample(sample_shape=torch.Size([int(round(s / 3)), 1])),
+        ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([int(round(s / 3)), 1]))], dim=0)
+    
+    # out = ds.Uniform(-0.5, 0.5).sample(sample_shape=torch.Size([s, 1]))
     return out
 
 
@@ -140,16 +137,16 @@ all_experiments = []
 
 
 prototype = {
-    'title': '6pt_toy_example',
+    'title': 'toy_thesis_0',
     'nn': {
-        'architecture': [n_dim, 30, 30, 1],
+        'architecture': [n_dim, 20, 20, 1],
         'nonlinearity': rbf,
         'prior_ds': ds.Normal(0.0, 3.0),
     },
     'data': {
         'noise_ds': ds.Normal(0.0, 0.1),
-        'plt_x_domain': (-5, 5),
-        'plt_y_domain': (-12, 12),
+        'plt_x_domain': (-4, 4),
+        'plt_y_domain': (-2, 2),
         'integral_constrained_region': 0,
         'X':  X,
         'Y':  Y,
@@ -164,18 +161,18 @@ prototype = {
         'constr': constr,
         'plot': [
             # DrawRectangle(bottom_left=(3, -0.5), top_right=(4, 1.5)),
-            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
-           #  DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
+            # DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
+            # DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
         ],
     },
     'bbb': {
         'BbB_rv_samples': 100,
         'batch_size': 0,  # batch_size = 0 implies full dataset training
-        'lr' : 0.01,
+        'lr' : 0.001,
         'regular': {
-            'iterations': 1000,
+            'iterations': 30000,
             'restarts': 1,
-            'reporting_every_': 50,
+            'reporting_every_': 500,
             'cores_used': 1,
         },
         'constrained': {
@@ -190,7 +187,7 @@ prototype = {
         },
         'initialize_q': {
             'mean': 1.0,  # * torch.randn
-            'std': -2.5,  # * torch.ones
+            'std': -2.0,  # * torch.ones
         },
         'posterior_predictive_analysis': {
             'posterior_samples': 50,
@@ -198,27 +195,27 @@ prototype = {
         }
 
     },
-    'hmc': {
-        'darting': {
-            'bool': True,
-            'preprocessing': {
-                'bool': False,
+    'hmc' : {
+        'darting' : {
+            'bool' : True,
+            'preprocessing' : {
+                'bool' : False,
                 'show_mode_cluster_analysis': False,
                 'searched_modes': 20,
                 'mode_searching_convergence': 0.005,
                 'n_darting_regions': 10,
-                'file_name': 'dart_toy_mult_great'
+                'file_name' : 'dart_toy_mult_great'
             },
-            'algorithm': {
-                'darting_region_radius': 2.0e1,
-                'p_check': 0.03,
+            'algorithm' : {
+                'darting_region_radius' : 2.0e1,  
+                'p_check' : 0.03,
             },
         },
-        'stepsize': 0.01,
-        'steps': 30,
-        'hmc_samples': 2000,
-        'burnin': 0,
-        'thinning': 3,
+        'stepsize' : 0.01,
+        'steps' : 30,
+        'hmc_samples' : 2000,
+        'burnin' : 0,
+        'thinning' : 3,
     },
     'experiment': {
         'run_regular_BbB': True,
@@ -241,4 +238,26 @@ all_experiments.append(prototype)
 
 main(all_experiments)
 # main_HMC(all_experiments)
+
+
+
+
+# returns inputs X s.t. x in X is from constrained X region
+# def constrained_X_sampler(s):
+#     # via rejection sampling
+#     samples = []
+#     while len(samples) < s:
+#         z = 3 * np.random.normal(size=n_dim)
+#         valid = True
+#         for region in constr:
+#             x_consts, _ = region
+#             for constraint in x_consts:
+#                 # in this ex., constr. is independent y
+#                 if constraint.f(z, None) > 0:
+#                     valid = False
+#         if valid:
+#             samples.append(z)
+
+#     return np.array(samples)
+
 

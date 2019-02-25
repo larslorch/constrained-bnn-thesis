@@ -40,6 +40,8 @@ def run_experiment(experiment):
     bbb_num_samples = experiment['bbb']['BbB_rv_samples']
     batch_size = experiment['bbb']['batch_size']
     num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
+    lr = experiment['bbb']['lr']
+
 
     # regular
     iterations_regular = experiment['bbb']['regular']['iterations']
@@ -134,26 +136,19 @@ def run_experiment(experiment):
     '''Computes expected violation via constraint function, of distribution implied by param'''
     def violation(param):
         mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
-        x_c = constrained_region_sampler(violation_samples)
-        y = forward(ws, x_c)    
-        return gamma * penalization(x_c, y) / y.numel()
-
-    '''Computes penalization of constrained region of x,y given constraints'''
-    def penalization(x, y):
+        weights = mean + torch.randn(S, mean.shape[0]) * log_std.exp()
+        x = constrained_region_sampler(violation_samples)
+        y = forward(weights, x)
         tau_c, tau_g = tau
         c = torch.zeros(y.shape)
         for region in constr:
-            x_consts, y_constr = region
             d = torch.ones(y.shape)
-            for constraint in x_consts:
-                d *= sig(constraint(x, y), tau_c)
-                # d *=  psi(constraint(x), tau_c, tau_g) deprecated
-            for constraint in y_constr:
+            for constraint in region:
                 d *= psi(constraint(x, y), tau_c, tau_g)
             c += d
-
-        return c.sum()
+        l = gamma * c.sum() / y.numel()
+        # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
+        return l
 
     '''Runs optimization algorithm for one random restart'''
     def run_optimization(r, constrained):
@@ -179,7 +174,8 @@ def run_experiment(experiment):
             reporting_every_ = reporting_every_regular_
 
         # ADAM optimizer
-        optimizer = optim.Adam([params], lr=0.01)
+        optimizer = optim.Adam([params], lr=lr)
+        # optimizer = optim.LBFGS([params], lr=1)
         # optimizer = optim.SGD([params], lr=0.01, momentum=0.9)
 
 
@@ -354,15 +350,10 @@ def compute_posterior_predictive_violation(params, prediction, experiment):
             for y_ in ys:
                 
                 polytopes_violated = []
-                for x_constraints, y_constraints in constr:
+                for region in constr:
 
-                    violates_x = all(
-                        [c_x(x_, y_) <= 0 for c_x in x_constraints])
-                    violates_y = all(
-                        [c_y(x_, y_) <= 0 for c_y in y_constraints])
-
-                    polytopes_violated.append(
-                        violates_x and violates_y)
+                    polytopes_violated.append(all(
+                        [c_x(x_, y_) <= 0 for c_x in region]))
 
                 if any(polytopes_violated):
                     ys_violated += 1
