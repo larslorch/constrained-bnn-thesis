@@ -17,27 +17,24 @@ together with our constrained version prior formulation
 '''
 
 
-def nonparametric_variational_inference(test_params, logp, violation, num_samples=1, constrained=False, num_batches=1):
+def nonparametric_variational_inference(logp, violation, num_samples=1, constrained=False, num_batches=1):
     
-    '''Fully-factored Gaussian'''
+    
     def unpack_params(params):
+        '''Uniform mixture of Gaussian'''
         means, log_stds = params[:, 1:], params[:, 0]
         return means, log_stds
 
-
-    '''
-    Entropy of variational distribution
-
-    Compute value of log q_n using log-sum-exp 
-
-        log[ (1/N) sum_j exp(logp_j) ]
-     =  log[sum_j exp(logp_j)] - log[N]
-     =  logsumexp(logp_j) - log[N]
-
-    '''
-
-
     def log_q_n(n, params):
+        '''
+        Entropy of variational distribution
+        Compute value of log q_n using log-sum-exp 
+        
+        log[ (1/N) sum_j exp(logp_j) ]
+        =  log[sum_j exp(logp_j)] - log[N]
+        =  logsumexp(logp_j) - log[N]
+
+        '''
         means, log_stds = unpack_params(params)
         vars = log_stds.exp().pow(2)
         N = means.shape[0]
@@ -48,31 +45,46 @@ def nonparametric_variational_inference(test_params, logp, violation, num_sample
             logprobs[j] = mvn.log_prob(means[n])
         return torch.logsumexp(logprobs, 0) - torch.tensor(N).float().log()
     
-    '''
-    First- and second-order approximation of ELBO
-    '''
 
-    # First-order approximation of ELBO
+    '''First- and second-order approximation of ELBO'''
+
+    def trace_hessian(f, x):
+        #  Computes trace of hessian of f w.r.t. x (x is 1D)
+        dim = x.shape[0]
+        df = grad(f, x, create_graph=True)[0]
+        tr_hess = 0
+        # iterate over every entry in df/dx and compute derivate
+        for j in range(dim):
+            d2fj = grad(df[j], x, create_graph=True)[0]
+            # add d2f/dx2 to trace
+            tr_hess += d2fj[j]
+        return tr_hess
+
     def elbo_approx_1(params, iter):
         means, _ = unpack_params(params)
         N = means.shape[0]
-        compts = torch.zeros(N)
+        components = torch.zeros(N)
         for j in range(N):
-            compts[j] = logp(means[j].unsqueeze(0), iter) - log_q_n(j, params)
-        return compts.mean(0)
+            components[j] = logp(means[j].unsqueeze(0),iter) \
+                - log_q_n(j, params)
+        return components.mean(0)
 
-    # Trace(Hessian)
-    def trhess(params):
-        # pretty sure this has to be done via sampling...
-        f = 0
-        return 0
-  
-    r = elbo_approx_1(test_params, 0)
+    def elbo_approx_2(params, iter):
 
-    print(r)
-    exit(0)
+        # first-order approx
+        elbo_1 = elbo_approx_1(params, iter)
+        
+        # second-order term
+        means, log_stds = unpack_params(params)
+        vars = log_stds.exp().pow(2)
+        N = means.shape[0]
+        traces = torch.zeros(N)
 
-    elbo_approx_2 = 0
+        for j in range(N):
+            x = means[j]
+            y = logp(x.unsqueeze(0), iter)
+            traces[j] = 0.5 * vars[j] * trace_hessian(y, x)
+        return elbo_1 + traces.sum()
 
     if constrained:
         return elbo_approx_1, elbo_approx_2

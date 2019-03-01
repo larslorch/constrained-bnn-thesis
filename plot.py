@@ -301,7 +301,6 @@ def plot_constraint_heatmap(param, prediction, experiment, plot_directory):
 
 
 
-
 '''
 Logs results to .txt in results folder
 '''

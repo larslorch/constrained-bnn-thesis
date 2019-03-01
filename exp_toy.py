@@ -180,7 +180,11 @@ prototype = {
             },
         },
         'npv_param': {
-            'mixtures' : 3, 
+            'mixtures' : 5, 
+            'optim' : {
+                'steps_per_mean' : 10,
+                'steps_std' : 10,
+            },
             'initialize_q': {
                 'mean': 1.0,  # * torch.randn
                 'std': -2.5,  # * torch.ones
@@ -190,9 +194,9 @@ prototype = {
         'batch_size': 0,  # batch_size = 0 implies full dataset training
         'lr' : 0.01,
         'regular': {
-            'iterations': 1000,
+            'iterations': 3,
             'restarts': 1,
-            'reporting_every_': 50,
+            'reporting_every_': 1,
             'cores_used': 1,
         },
         'constrained': {
@@ -234,8 +238,8 @@ prototype = {
         'thinning': 3,
     },
     'experiment': {
-        'run_regular_BbB': True,
-        'run_constrained_BbB': False,
+        'run_regular_vi': True,
+        'run_constrained_vi': False,
         'multithread_computation': False,
         'compute_held_out_loglik_id': True,
         'compute_held_out_loglik_ood': False,

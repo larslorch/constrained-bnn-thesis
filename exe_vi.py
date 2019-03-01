@@ -20,59 +20,61 @@ Runs variational inference optimization procedure and returns results
 '''
 def run_experiment(experiment):
 
-    '''BNN '''
-    architecture = experiment['nn']['architecture']
-    nonlinearity = experiment['nn']['nonlinearity']
-    prior_ds = experiment['nn']['prior_ds']
+    # always, this is done to hide import code in editor
+    if True:
 
-    '''Data '''
-    noise_ds = experiment['data']['noise_ds']
-    X = experiment['data']['X'] 
-    Y = experiment['data']['Y']
+        '''BNN '''
+        architecture = experiment['nn']['architecture']
+        nonlinearity = experiment['nn']['nonlinearity']
+        prior_ds = experiment['nn']['prior_ds']
 
-    X_v_id = experiment['data']['X_v_id']
-    Y_v_id = experiment['data']['Y_v_id']
+        '''Data '''
+        noise_ds = experiment['data']['noise_ds']
+        X = experiment['data']['X'] 
+        Y = experiment['data']['Y']
 
-    X_v_ood = experiment['data']['X_v_ood']
-    Y_v_ood = experiment['data']['Y_v_ood']
+        X_v_id = experiment['data']['X_v_id']
+        Y_v_id = experiment['data']['Y_v_id']
 
-
-    '''BbB settings'''
-    rv_samples = experiment['vi']['rv_samples']
-    batch_size = experiment['vi']['batch_size']
-    num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
-    lr = experiment['vi']['lr']
+        X_v_ood = experiment['data']['X_v_ood']
+        Y_v_ood = experiment['data']['Y_v_ood']
 
 
-    # regular
-    iterations_regular = experiment['vi']['regular']['iterations']
-    restarts_regular = experiment['vi']['regular']['restarts']
-    reporting_every_regular_ = experiment['vi']['regular']['reporting_every_']
-    cores_regular = experiment['vi']['regular']['cores_used']
+        '''VI settings'''
+        rv_samples = experiment['vi']['rv_samples']
+        batch_size = experiment['vi']['batch_size']
+        num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
+        lr = experiment['vi']['lr']
 
-    # constrained
-    iterations_constr = experiment['vi']['constrained']['iterations']
-    restarts_constr = experiment['vi']['constrained']['restarts']
-    reporting_every_constr_ = experiment['vi']['constrained']['reporting_every_']
-    cores_constr = experiment['vi']['constrained']['cores_used']
-    gamma = experiment['vi']['constrained']['gamma']
-    tau = experiment['vi']['constrained']['tau_tuple']
-    violation_samples = experiment['vi']['constrained']['violation_samples']
-    constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
-    constr = experiment['constraints']['constr']
+        # regular
+        iterations_regular = experiment['vi']['regular']['iterations']
+        restarts_regular = experiment['vi']['regular']['restarts']
+        reporting_every_regular_ = experiment['vi']['regular']['reporting_every_']
+        cores_regular = experiment['vi']['regular']['cores_used']
 
-    S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
+        # constrained
+        iterations_constr = experiment['vi']['constrained']['iterations']
+        restarts_constr = experiment['vi']['constrained']['restarts']
+        reporting_every_constr_ = experiment['vi']['constrained']['reporting_every_']
+        cores_constr = experiment['vi']['constrained']['cores_used']
+        gamma = experiment['vi']['constrained']['gamma']
+        tau = experiment['vi']['constrained']['tau_tuple']
+        violation_samples = experiment['vi']['constrained']['violation_samples']
+        constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
+        constr = experiment['constraints']['constr']
 
-    '''Experiment settings'''
-    regular_BbB = experiment['experiment']['run_regular_BbB']
-    constrained_BbB = experiment['experiment']['run_constrained_BbB']
-    multithread = experiment['experiment']['multithread_computation']
-    compute_held_out_loglik_id = experiment['experiment']['compute_held_out_loglik_id']
-    compute_held_out_loglik_ood = experiment['experiment']['compute_held_out_loglik_ood']
+        S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
+        
 
-    compute_RMSE_id = experiment['experiment']['compute_RMSE_id']
-    compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
+        '''Experiment settings'''
+        regular_BbB = experiment['experiment']['run_regular_vi']
+        constrained_BbB = experiment['experiment']['run_constrained_vi']
+        multithread = experiment['experiment']['multithread_computation']
+        compute_held_out_loglik_id = experiment['experiment']['compute_held_out_loglik_id']
+        compute_held_out_loglik_ood = experiment['experiment']['compute_held_out_loglik_ood']
 
+        compute_RMSE_id = experiment['experiment']['compute_RMSE_id']
+        compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
 
     '''Make directory for results'''
     current_directory = make_unique_dir(experiment)
@@ -86,12 +88,10 @@ def run_experiment(experiment):
                  num_batches=num_batches)
 
     '''Defines log posterior with minibatching'''
-
     if batch_size == 0:
         # full dataset
         def log_posterior(weights, iter):
             return log_prob(weights, X, Y)
-
     else:
         # minibatching
         def batch_indices(iter):
@@ -106,10 +106,7 @@ def run_experiment(experiment):
             return log_prob(weights, X[batch], Y[batch])
 
 
-    '''
-    Inference functions
-    '''
-
+    '''Inference functions'''
     both_runs = []
 
     '''Computes held-out log likelihood of x,y given distribution implied by param'''
@@ -155,7 +152,7 @@ def run_experiment(experiment):
                 log_posterior, violation, num_samples=rv_samples, constrained=constrained, num_batches=num_batches)
 
         # initialization
-        print(130 * '-')
+        print(50 * '-')
         init_mean = experiment['vi']['bbb_param']['initialize_q']['mean'] * \
             torch.randn(num_weights, 1)
         init_log_std = experiment['vi']['bbb_param']['initialize_q']['std'] * \
@@ -236,13 +233,15 @@ def run_experiment(experiment):
     '''Runs nonparametric VI for one random restart'''
     def run_npv(r, constrained):
         
-       
-
-        # initialization: params has shape (mixtures, weights, 2)
-        print(130 * '-')
+        # initialization: params has shape (mixtures, weights + 1)
+        print(50 * '-')
         mixtures = experiment['vi']['npv_param']['mixtures']
+        mean_opt_step = steps = experiment['vi'][
+            'npv_param']['optim']['steps_per_mean']
+        std_opt_step = steps = experiment['vi'][
+            'npv_param']['optim']['steps_std']
+
         params = torch.zeros(mixtures, num_weights + 1)
-        
         
         for m in range(mixtures):
             params[m, :] = experiment['vi']['bbb_param']['initialize_q']['mean'] * \
@@ -251,10 +250,8 @@ def run_experiment(experiment):
 
         params = Variable(params, requires_grad=True)
         
-
         elbo_approx_1, elbo_approx_2 = \
             nonparametric_variational_inference(
-                params,
                 log_posterior, 
                 violation, 
                 num_samples=rv_samples, 
@@ -269,13 +266,8 @@ def run_experiment(experiment):
         else:
             iterations = iterations_regular
             reporting_every_ = reporting_every_regular_
+    
 
-        # ADAM optimizer
-        optimizer = optim.Adam([params], lr=lr)
-        # optimizer = optim.LBFGS([params], lr=1)
-        # optimizer = optim.SGD([params], lr=0.01, momentum=0.9)
-
-        # evaluation
         training_evaluation = dict(
             objective=[],
             elbo=[],
@@ -288,6 +280,32 @@ def run_experiment(experiment):
         for t in range(iterations):
             
             # TODO
+            
+            # optimize means individually
+            for n in range(mixtures):
+                
+                # UNPACK params + CHANGE
+                mean_optimizer = optim.Adam([params], lr=lr)
+
+                for _ in range(mean_opt_step):
+                    mean_optimizer.zero_grad()
+
+                    # compute l1 loss and step on mean[n]
+
+                    pass
+
+            # optimize stds
+
+            # UNPACK params + CHANGE
+            std_optimizer = optim.Adam([params], lr=lr)
+
+            for _ in range(std_opt_step):
+                std_optimizer.zero_grad()
+
+                # compute l2 loss and step
+                pass
+
+        
 
             print('Not implemented.')
             exit(1)
@@ -300,7 +318,7 @@ def run_experiment(experiment):
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
-                elbo = evidence_lower_bound(params, t)
+                elbo = elbo_approx_1(params, t)
                 viol = violation(params).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
@@ -324,7 +342,7 @@ def run_experiment(experiment):
                         compute_rmse(X_v_ood, Y_v_ood, params.detach()))
 
                 # command line printing
-                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}'.format(
+                str = 'Step {:7}  ---  Objective: {:15}  ELBO (first-order): {:15}  Violation: {:10}'.format(
                     t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
 
                 if compute_RMSE_id:
