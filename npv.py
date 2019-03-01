@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.distributions as ds
-from torch.autograd import Variable
+from torch.autograd import Variable, grad
 
 '''
 Implements Nonparametric Variational Inference (NPV)
@@ -17,48 +17,64 @@ together with our constrained version prior formulation
 '''
 
 
-def nonparametric_variational_inference(logp, violation, num_samples=1, constrained=False, num_batches=1):
+def nonparametric_variational_inference(test_params, logp, violation, num_samples=1, constrained=False, num_batches=1):
     
     '''Fully-factored Gaussian'''
     def unpack_params(params):
-        mean, log_std = params[:, 0], params[:, 1]
-        return mean, log_std
+        means, log_stds = params[:, 1:], params[:, 0]
+        return means, log_stds
+
 
     '''
-    log q(x) of variational distribution (negative entropy)
+    Entropy of variational distribution
+
+    Compute value of log q_n using log-sum-exp 
+
+        log[ (1/N) sum_j exp(logp_j) ]
+     =  log[sum_j exp(logp_j)] - log[N]
+     =  logsumexp(logp_j) - log[N]
+
+    '''
+
+
+    def log_q_n(n, params):
+        means, log_stds = unpack_params(params)
+        vars = log_stds.exp().pow(2)
+        N = means.shape[0]
+        W = means.shape[1]
+        logprobs = torch.zeros(N)
+        for j in range(N):
+            mvn = ds.MultivariateNormal(means[j], (vars[j] + vars[n]) * torch.eye(W))
+            logprobs[j] = mvn.log_prob(means[n])
+        return torch.logsumexp(logprobs, 0) - torch.tensor(N).float().log()
     
-    (closed-form Gaussian entropy 
-    E[- log q(w)] = 1/2 + 1/2 log(2 * pi * std^2))
+    '''
+    First- and second-order approximation of ELBO
     '''
 
-    def logq(log_std):
-        return - torch.sum(0.5 + 0.5 * torch.log(2 * torch.tensor(math.pi)) + log_std) 
+    # First-order approximation of ELBO
+    def elbo_approx_1(params, iter):
+        means, _ = unpack_params(params)
+        N = means.shape[0]
+        compts = torch.zeros(N)
+        for j in range(N):
+            compts[j] = logp(means[j].unsqueeze(0), iter) - log_q_n(j, params)
+        return compts.mean(0)
 
-    '''
-    Stochastic estimate of variational objective (neg. ELBO)
-    using reparameterization trick (not REINFORCE/score function)
+    # Trace(Hessian)
+    def trhess(params):
+        # pretty sure this has to be done via sampling...
+        f = 0
+        return 0
+  
+    r = elbo_approx_1(test_params, 0)
 
-    corrects for batch_size/num_batches by scaling KL[q(w)|p(w)]
-    as explained in https://arxiv.org/pdf/1505.05424.pdf  
+    print(r)
+    exit(0)
 
-    iter is needed for batch training
-    '''
+    elbo_approx_2 = 0
 
-    def evidence_lower_bound(params, iter):
-        mean, log_std = unpack_params(params)
-        weights = mean + torch.randn(num_samples,
-                                     params.shape[0]) * log_std.exp() 
-        elbo = (logp(weights, iter) - logq(log_std) / num_batches).mean()
-        return elbo
-
-    def variational_objective_regular(params, iter):
-        return - evidence_lower_bound(params, iter)
-    
-    def variational_objective_constrained(params, iter):
-        return - evidence_lower_bound(params, iter) + violation(params)
-
-    
     if constrained:
-        return variational_objective_constrained, evidence_lower_bound
+        return elbo_approx_1, elbo_approx_2
     else:
-        return variational_objective_regular, evidence_lower_bound
+        return elbo_approx_1, elbo_approx_2

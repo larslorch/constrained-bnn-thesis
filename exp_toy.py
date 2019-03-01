@@ -96,6 +96,9 @@ def x_c01(x, y): return - x + 3
 def y_c02(x, y): return y - 1.5
 def y_c03(x, y): return - y - 0.5
 
+
+
+
 # center
 def x_c10(x, y): return x - 0.5
 def x_c11(x, y): return - x - 0.5
@@ -177,6 +180,7 @@ prototype = {
             },
         },
         'npv_param': {
+            'mixtures' : 3, 
             'initialize_q': {
                 'mean': 1.0,  # * torch.randn
                 'std': -2.5,  # * torch.ones

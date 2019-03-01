@@ -12,6 +12,7 @@ from plot import *
 from utils import *
 from bbb import bayes_by_backprop_variational_inference
 from bnn import make_BNN
+from npv import nonparametric_variational_inference
 
 
 '''
@@ -37,7 +38,7 @@ def run_experiment(experiment):
 
 
     '''BbB settings'''
-    bbb_num_samples = experiment['vi']['rv_samples']
+    rv_samples = experiment['vi']['rv_samples']
     batch_size = experiment['vi']['batch_size']
     num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
     lr = experiment['vi']['lr']
@@ -151,7 +152,7 @@ def run_experiment(experiment):
                 
         variational_objective, evidence_lower_bound = \
             bayes_by_backprop_variational_inference(
-                log_posterior, violation, num_samples=bbb_num_samples, constrained=constrained, num_batches=num_batches)
+                log_posterior, violation, num_samples=rv_samples, constrained=constrained, num_batches=num_batches)
 
         # initialization
         print(130 * '-')
@@ -234,12 +235,106 @@ def run_experiment(experiment):
 
     '''Runs nonparametric VI for one random restart'''
     def run_npv(r, constrained):
+        
+       
 
-        print('Not implemented.')
-        exit(1)
-        pass
-        # return params.detach(), loss.detach(), training_evaluation
-                
+        # initialization: params has shape (mixtures, weights, 2)
+        print(130 * '-')
+        mixtures = experiment['vi']['npv_param']['mixtures']
+        params = torch.zeros(mixtures, num_weights + 1)
+        
+        
+        for m in range(mixtures):
+            params[m, :] = experiment['vi']['bbb_param']['initialize_q']['mean'] * \
+                torch.randn(num_weights + 1)
+            params[m, 0] = experiment['vi']['bbb_param']['initialize_q']['std'] 
+
+        params = Variable(params, requires_grad=True)
+        
+
+        elbo_approx_1, elbo_approx_2 = \
+            nonparametric_variational_inference(
+                params,
+                log_posterior, 
+                violation, 
+                num_samples=rv_samples, 
+                constrained=constrained, 
+                num_batches=num_batches)
+
+
+        # specific settings
+        if constrained:
+            iterations = iterations_constr
+            reporting_every_ = reporting_every_constr_
+        else:
+            iterations = iterations_regular
+            reporting_every_ = reporting_every_regular_
+
+        # ADAM optimizer
+        optimizer = optim.Adam([params], lr=lr)
+        # optimizer = optim.LBFGS([params], lr=1)
+        # optimizer = optim.SGD([params], lr=0.01, momentum=0.9)
+
+        # evaluation
+        training_evaluation = dict(
+            objective=[],
+            elbo=[],
+            violation=[],
+            held_out_ll_indist=[],
+            held_out_ll_outofdist=[],
+            rmse_id=[],
+            rmse_ood=[])
+
+        for t in range(iterations):
+            
+            # TODO
+
+            print('Not implemented.')
+            exit(1)
+
+            # optimization
+            optimizer.zero_grad()
+            loss = variational_objective(params, t)
+            loss.backward()
+            optimizer.step()
+
+            # compute evaluation every 'reporting_every_' steps
+            if not t % reporting_every_:
+                elbo = evidence_lower_bound(params, t)
+                viol = violation(params).detach()
+                training_evaluation['objective'].append(loss.detach())
+                training_evaluation['elbo'].append(elbo.detach())
+                training_evaluation['violation'].append(viol)
+
+                if compute_held_out_loglik_id:
+                    training_evaluation['held_out_ll_indist'].append(
+                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach()))
+
+                if compute_held_out_loglik_ood:
+                    training_evaluation['held_out_ll_outofdist'].append(
+                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach()))
+
+                if compute_RMSE_id:
+                    rmse_id_cache = compute_rmse(
+                        X_v_id, Y_v_id, params.detach())
+                    training_evaluation['rmse_id'].append(rmse_id_cache)
+
+                if compute_RMSE_ood:
+                    training_evaluation['rmse_ood'].append(
+                        compute_rmse(X_v_ood, Y_v_ood, params.detach()))
+
+                # command line printing
+                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}'.format(
+                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
+
+                if compute_RMSE_id:
+                    str += '   ID-RMSE {:10}'.format(
+                        round(rmse_id_cache.item(), 4))
+
+                print(str)
+
+        return params.detach(), loss.detach(), training_evaluation
+
 
 
     '''Runs multiple restarts'''
