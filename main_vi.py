@@ -45,11 +45,13 @@ def main_vi(all_experiments):
         print('Experiment {} / {}.'.format(id + 1, len(all_experiments)))
 
         # run (both regular and constrained experiment)
-        results, bnn_forward_pass, current_directory = run_experiment(experiment)
+        results, funcs, current_directory = run_experiment(experiment)
 
         # analysis options
         show_function_samples = experiment['experiment']['show_function_samples']
         show_posterior_predictive = experiment['experiment']['show_posterior_predictive']
+        show_posterior_predictive_ind, plot_posterior_predictive_ind_samples = experiment[
+            'experiment']['show_posterior_predictive_ind']
         show_plot_training_evaluations = experiment['experiment']['show_plot_training_evaluations']
         show_constraint_function_heatmap = experiment['experiment']['show_constraint_function_heatmap']
 
@@ -60,7 +62,7 @@ def main_vi(all_experiments):
 
             # compute posterior predictive violation
             violations = compute_posterior_predictive_violation(
-                params, bnn_forward_pass, experiment)           
+                params, funcs, experiment)
 
             '''Plotting'''
 
@@ -73,12 +75,16 @@ def main_vi(all_experiments):
             # sample functions
             if show_function_samples:
                 plot_sample_functions(
-                    opt_param, bnn_forward_pass, experiment, plot_directory, descr)
+                    opt_param, funcs, experiment, plot_directory, descr)
 
             # posterior predictive
             if show_posterior_predictive:
                 plot_posterior_predictive(
-                    opt_param, bnn_forward_pass, experiment, plot_directory, descr)
+                    opt_param, funcs, experiment, plot_directory, descr)
+
+            if show_posterior_predictive_ind:
+                plot_posterior_predictive_ind(
+                    opt_param, funcs, experiment, plot_directory, descr, plot_posterior_predictive_ind_samples)
 
             # training evaluations
             if show_plot_training_evaluations:
@@ -88,7 +94,7 @@ def main_vi(all_experiments):
             # constraint function
             if show_constraint_function_heatmap:
                 plot_constraint_heatmap(
-                    opt_param, bnn_forward_pass, experiment, plot_directory)
+                    opt_param, funcs['forward'], experiment, plot_directory)
                 
 
             '''Log results'''

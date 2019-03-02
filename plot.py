@@ -35,8 +35,10 @@ class DrawRectangle:
 Plot for functions sampled from single variational approximation
 '''
 
-def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
+def plot_sample_functions(param, funcs, experiment, plot_directory, descr):
 
+    prediction = funcs['forward']
+    sample_q = funcs['sample_q']
     plt_x_domain = experiment['data']['plt_x_domain']
     plt_y_domain = experiment['data']['plt_y_domain']
     X = experiment['data']['X']
@@ -52,8 +54,7 @@ def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
     # can only plot 1D at this point
     if X_plot.shape[1] == 1:
 
-        mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(function_samples, param.shape[0]) *  log_std.exp() # torch.log(1.0 + log_std.exp()) 
+        ws = sample_q(function_samples, param)
         samples = prediction(ws, X_plot).squeeze()
 
         if len(samples.shape) > 2:
@@ -88,8 +89,11 @@ def plot_sample_functions(param, prediction, experiment, plot_directory, descr):
 Plot for posterior predictive of single variational approximation
 '''
 
-def plot_posterior_predictive(param, prediction, experiment, plot_directory, descr):
 
+def plot_posterior_predictive(param, funcs, experiment, plot_directory, descr):
+
+    prediction = funcs['forward']
+    sample_q = funcs['sample_q']
     plt_x_domain = experiment['data']['plt_x_domain']
     plt_y_domain = experiment['data']['plt_y_domain']
     X = experiment['data']['X']
@@ -110,9 +114,7 @@ def plot_posterior_predictive(param, prediction, experiment, plot_directory, des
     # can only plot 1D at this point
     if X_plot.shape[1] == 1:
 
-        mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(function_samples,
-                                param.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
+        ws = sample_q(function_samples, param)
         samples = prediction(ws, X_plot).squeeze()
         mean = samples.mean(0).squeeze().numpy()
         std = samples.std(0).squeeze().numpy()
@@ -192,6 +194,91 @@ def plot_posterior_predictive(param, prediction, experiment, plot_directory, des
         plt.close('all')
 
         
+def plot_posterior_predictive_ind(param, funcs, experiment, plot_directory, descr, function_samples):
+
+    prediction = funcs['forward']
+    sample_q = funcs['sample_q']
+    plt_x_domain = experiment['data']['plt_x_domain']
+    plt_y_domain = experiment['data']['plt_y_domain']
+    X = experiment['data']['X']
+    Y = experiment['data']['Y']
+    X_plot = experiment['data']['X_plot']
+    Y_plot = experiment['data']['Y_plot']
+    X_v_id = experiment['data']['X_v_id']
+    Y_v_id = experiment['data']['Y_v_id']
+    X_v_ood = experiment['data']['X_v_ood']
+    Y_v_ood = experiment['data']['Y_v_ood']
+
+    constr_plot = experiment['constraints']['plot']
+    size_tup = experiment['experiment']['plot_size']
+
+    # can only plot 1D at this point
+    if X_plot.shape[1] == 1:
+
+        ws = sample_q(function_samples, param)
+        y_pred = prediction(ws, X_plot)
+
+        '''Plot'''
+        fig, ax = plt.subplots()
+
+        ax.scatter(X.numpy(), Y.numpy(), color='black', marker='x')
+        ax.plot(X_plot.numpy(), Y_plot.numpy(),
+                color='blue', alpha=0.7, linestyle='--')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+
+        ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
+                y_pred.squeeze().transpose(0, 1).numpy(),
+                c='blue',
+                alpha=0.02)
+       
+        for p in constr_plot:
+            ax.add_patch(p.get())
+
+        ax.set_xlim(plt_x_domain)
+        ax.set_ylim(plt_y_domain)
+
+        plt.title('Posterior predictive using {}'.format(descr))
+
+        plt.tight_layout()
+        fig = plt.gcf()  # get current figure
+        fig.set_size_inches(size_tup)
+        plt.savefig(
+            plot_directory + '/posterior_predictive_ind_{}.png'.format(descr), format='png', frameon=False, dpi=dpi)
+        plt.close('all')
+
+        # same plot but with held-out test data
+
+        fig, ax = plt.subplots()
+
+        ax.plot(X_plot.numpy(), Y_plot.numpy(),
+                color='blue', alpha=0.7, linestyle='--')
+        ax.set_xlabel('')
+        ax.set_ylabel('y')
+       
+        ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
+                y_pred.squeeze().transpose(0, 1).numpy(),
+                c='blue',
+                alpha=0.02)
+
+        for p in constr_plot:
+            ax.add_patch(p.get())
+        ax.set_xlim(plt_x_domain)
+        ax.set_ylim(plt_y_domain)
+        ax.scatter(X_v_id.numpy(), Y_v_id.numpy(),
+                   color='lawngreen', marker='x')
+        ax.scatter(X_v_ood.numpy(), Y_v_ood.numpy(),
+                   color='orange', marker='x')
+
+        plt.title('Posterior predictive using {}'.format(descr))
+
+        plt.tight_layout()
+        fig = plt.gcf()  # get current figure
+        fig.set_size_inches(size_tup)
+        plt.savefig(
+            plot_directory + '/held_out_data_{}.png'.format(descr), format='png', frameon=False, dpi=dpi)
+        plt.close('all')
+
 '''
 Summary plot of training metrics
 '''

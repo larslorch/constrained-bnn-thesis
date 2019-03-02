@@ -79,6 +79,8 @@ def run_experiment(experiment):
     '''Make directory for results'''
     current_directory = make_unique_dir(experiment)
     
+    funcs_passed_on = dict()
+
     '''Define BNN'''
     num_weights, forward, log_prob = \
         make_BNN(layer_sizes=architecture,
@@ -86,6 +88,9 @@ def run_experiment(experiment):
                  noise_ds=noise_ds,
                  nonlinearity=nonlinearity,
                  num_batches=num_batches)
+
+    funcs_passed_on['forward'] = forward
+    funcs_passed_on['log_prob'] = log_prob
 
     '''Defines log posterior with minibatching'''
     if batch_size == 0:
@@ -110,29 +115,26 @@ def run_experiment(experiment):
     both_runs = []
 
     '''Computes held-out log likelihood of x,y given distribution implied by param'''
-    def held_out_loglikelihood(x, y, param):
-        mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp() # torch.log(1.0 + log_std.exp())
+    def held_out_loglikelihood(x, y, param, sample_q):
+        ws = sample_q(S, param)
         samples = forward(ws, x)
         mean = samples.mean(0).squeeze()
         std = samples.std(0).squeeze()
         return ds.Normal(mean, std).log_prob(y).sum()
 
     '''Compute RMSE of validation dataset given optimizated params'''
-    def compute_rmse(x, y, param):
-        mean, log_std = param[:, 0], param[:, 1]
-        ws = mean + torch.randn(S, mean.shape[0]) * log_std.exp()
+    def compute_rmse(x, y, param, sample_q):
+        ws = sample_q(S, param)
         samples = forward(ws, x)
         pred = samples.mean(0) # prediction is mean
         rmse = (pred - y).pow(2).mean(0).pow(0.5)
         return rmse
     
     '''Computes expected violation via constraint function, of distribution implied by param'''
-    def violation(param):
-        mean, log_std = param[:, 0], param[:, 1]
-        weights = mean + torch.randn(S, mean.shape[0]) * log_std.exp()
+    def violation(param, sample_q):
+        ws = sample_q(S, param)
         x = constrained_region_sampler(violation_samples)
-        y = forward(weights, x)
+        y = forward(ws, x)
         tau_c, tau_g = tau
         c = torch.zeros(y.shape)
         for region in constr:
@@ -147,9 +149,14 @@ def run_experiment(experiment):
     '''Runs Bayes by Backprop for one random restart'''
     def run_bbb(r, constrained):
                 
-        variational_objective, evidence_lower_bound = \
+        variational_objective, evidence_lower_bound, unpack_params, sample_q = \
             bayes_by_backprop_variational_inference(
                 log_posterior, violation, num_samples=rv_samples, constrained=constrained, num_batches=num_batches)
+
+        funcs_passed_on['unpack_params'] = unpack_params
+        funcs_passed_on['sample_q'] = sample_q
+        funcs_passed_on['elbo'] = evidence_lower_bound
+
 
         # initialization
         print(50 * '-')
@@ -197,27 +204,27 @@ def run_experiment(experiment):
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
                 elbo = evidence_lower_bound(params, t)
-                viol = violation(params).detach()
+                viol = violation(params, sample_q).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
 
                 if compute_held_out_loglik_id:
                     training_evaluation['held_out_ll_indist'].append(
-                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach()))
+                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
 
                 if compute_held_out_loglik_ood:
                     training_evaluation['held_out_ll_outofdist'].append(
-                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach()))
+                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
                 
                 if compute_RMSE_id:
                     rmse_id_cache = compute_rmse(
-                        X_v_id, Y_v_id, params.detach())
+                        X_v_id, Y_v_id, params.detach(), sample_q)
                     training_evaluation['rmse_id'].append(rmse_id_cache)
                 
                 if compute_RMSE_ood:
                     training_evaluation['rmse_ood'].append(
-                        compute_rmse(X_v_ood, Y_v_ood, params.detach()))
+                        compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 # command line printing
                 str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}'.format(
@@ -236,11 +243,6 @@ def run_experiment(experiment):
         # initialization: params has shape (mixtures, weights + 1)
         print(50 * '-')
         mixtures = experiment['vi']['npv_param']['mixtures']
-        mean_opt_step = steps = experiment['vi'][
-            'npv_param']['optim']['steps_per_mean']
-        std_opt_step = steps = experiment['vi'][
-            'npv_param']['optim']['steps_std']
-
         params = torch.zeros(mixtures, num_weights + 1)
         
         for m in range(mixtures):
@@ -250,7 +252,7 @@ def run_experiment(experiment):
 
         params = Variable(params, requires_grad=True)
         
-        elbo_approx_1, elbo_approx_2 = \
+        elbo_approx_1, elbo_approx_2, unpack_params, sample_q = \
             nonparametric_variational_inference(
                 log_posterior, 
                 violation, 
@@ -258,6 +260,9 @@ def run_experiment(experiment):
                 constrained=constrained, 
                 num_batches=num_batches)
 
+        funcs_passed_on['unpack_params'] = unpack_params
+        funcs_passed_on['sample_q'] = sample_q
+        funcs_passed_on['elbo'] = elbo_approx_2
 
         # specific settings
         if constrained:
@@ -277,69 +282,40 @@ def run_experiment(experiment):
             rmse_id=[],
             rmse_ood=[])
 
+        optimizer = optim.Adam([params], lr=lr)
+
         for t in range(iterations):
-            
-            # TODO
-            
-            # optimize means individually
-            for n in range(mixtures):
-                
-                # UNPACK params + CHANGE
-                mean_optimizer = optim.Adam([params], lr=lr)
-
-                for _ in range(mean_opt_step):
-                    mean_optimizer.zero_grad()
-
-                    # compute l1 loss and step on mean[n]
-
-                    pass
-
-            # optimize stds
-
-            # UNPACK params + CHANGE
-            std_optimizer = optim.Adam([params], lr=lr)
-
-            for _ in range(std_opt_step):
-                std_optimizer.zero_grad()
-
-                # compute l2 loss and step
-                pass
-
-        
-
-            print('Not implemented.')
-            exit(1)
-
-            # optimization
+                        
             optimizer.zero_grad()
-            loss = variational_objective(params, t)
+            loss = - elbo_approx_2(params, t) # potentially use first-order approx in the beginning
             loss.backward()
             optimizer.step()
+            # print('{} / {} | ELBO = {}'.format(t, iterations, - loss))
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
                 elbo = elbo_approx_1(params, t)
-                viol = violation(params).detach()
+                viol = violation(params, sample_q).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
 
                 if compute_held_out_loglik_id:
                     training_evaluation['held_out_ll_indist'].append(
-                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach()))
+                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
 
                 if compute_held_out_loglik_ood:
                     training_evaluation['held_out_ll_outofdist'].append(
-                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach()))
+                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 if compute_RMSE_id:
                     rmse_id_cache = compute_rmse(
-                        X_v_id, Y_v_id, params.detach())
+                        X_v_id, Y_v_id, params.detach(), sample_q)
                     training_evaluation['rmse_id'].append(rmse_id_cache)
 
                 if compute_RMSE_ood:
                     training_evaluation['rmse_ood'].append(
-                        compute_rmse(X_v_ood, Y_v_ood, params.detach()))
+                        compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 # command line printing
                 str = 'Step {:7}  ---  Objective: {:15}  ELBO (first-order): {:15}  Violation: {:10}'.format(
@@ -352,8 +328,6 @@ def run_experiment(experiment):
                 print(str)
 
         return params.detach(), loss.detach(), training_evaluation
-
-
 
     '''Runs multiple restarts'''
     def run_all(constrained):
@@ -418,12 +392,12 @@ def run_experiment(experiment):
     both_runs = []
 
     if regular_BbB:
-        both_runs.append(run_all(False))
+        both_runs.append(run_all(constrained=False))
 
     if constrained_BbB:
-        both_runs.append(run_all(True))
+        both_runs.append(run_all(constrained=True))
 
-    return both_runs, forward, current_directory
+    return both_runs, funcs_passed_on, current_directory
 
 
 '''
@@ -433,7 +407,10 @@ Computes mass of posterior predictive in constrained region
 This is an interpretable evaluation metric rather than the violation part of the objective.
 '''
 
-def compute_posterior_predictive_violation(params, prediction, experiment):
+def compute_posterior_predictive_violation(params, funcs, experiment):
+
+    prediction = funcs['forward']
+    sample_q = funcs['sample_q']
 
     S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
     T = experiment['vi']['posterior_predictive_analysis']['constrained_region_samples_for_pp_violation']
@@ -448,18 +425,15 @@ def compute_posterior_predictive_violation(params, prediction, experiment):
     # for each random restart
     for j, param in enumerate(params):
 
-
-        mean, log_std = param[:, 0], param[:, 1]
-
         '''Collect samples from optimized variational distribution'''
-        ws = mean + torch.randn(S, param.shape[0]) *  log_std.exp() # torch.log(1.0 + log_std.exp()) #
+        ws = sample_q(S, param)
 
         '''Integral of posterior predictive over total constrained region, evaluation metric'''
 
         # 1 - find random x samples form constrained region (via passed in sampling function)
         #     and approximation of area of constrained x region
 
-        all_mc_points = constrained_region_sampler(T).unsqueeze(1)
+        all_mc_points = constrained_region_sampler(T).unsqueeze(-1)
 
         # 2 - approximate integral using monte carlo 
 
@@ -470,7 +444,6 @@ def compute_posterior_predictive_violation(params, prediction, experiment):
 
         for x_ in all_mc_points:
             
-
             # 2.1 - sample ys from p(y' | x', X, Y) using MC samples of W
             ys = prediction(ws, x_)
 

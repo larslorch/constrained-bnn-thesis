@@ -24,6 +24,13 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
         mean, log_std = params[:, 0], params[:, 1]
         return mean, log_std
 
+    def sample_q(samples, params):
+        mean, log_std = unpack_params(params)
+        weights = mean + torch.randn(samples,
+                                     mean.shape[0]) * log_std.exp()
+        return weights
+
+
     '''
     log q(x) of variational distribution (negative entropy)
     
@@ -46,8 +53,7 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
 
     def evidence_lower_bound(params, iter):
         mean, log_std = unpack_params(params)
-        weights = mean + torch.randn(num_samples,
-                                     params.shape[0]) * log_std.exp() 
+        weights = sample_q(num_samples, params)
         elbo = (logp(weights, iter) - logq(log_std) / num_batches).mean()
         return elbo
 
@@ -59,6 +65,6 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
 
     
     if constrained:
-        return variational_objective_constrained, evidence_lower_bound
+        return variational_objective_constrained, evidence_lower_bound, unpack_params, sample_q
     else:
-        return variational_objective_regular, evidence_lower_bound
+        return variational_objective_regular, evidence_lower_bound, unpack_params, sample_q

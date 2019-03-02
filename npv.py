@@ -25,6 +25,19 @@ def nonparametric_variational_inference(logp, violation, num_samples=1, constrai
         means, log_stds = params[:, 1:], params[:, 0]
         return means, log_stds
 
+    def sample_q(samples, params):
+        '''Samples from mixture of Gaussian q'''
+        N = params.shape[0]
+        k = ds.Categorical(probs=torch.ones(N)).sample(torch.Size([samples]))
+        means, log_stds = unpack_params(params)
+        means, log_stds = means[k], log_stds[k]
+        num_weights = means.shape[1]
+        covs = torch.zeros(samples, num_weights, num_weights)
+        I = torch.eye(num_weights)
+        for j in range(samples):
+            covs[j] = log_stds[j].exp().pow(2) * I
+        return ds.MultivariateNormal(means, covs).sample()
+
     def log_q_n(n, params):
         '''
         Entropy of variational distribution
@@ -87,6 +100,6 @@ def nonparametric_variational_inference(logp, violation, num_samples=1, constrai
         return elbo_1 + traces.sum()
 
     if constrained:
-        return elbo_approx_1, elbo_approx_2
+        return elbo_approx_1, elbo_approx_2, unpack_params, sample_q
     else:
-        return elbo_approx_1, elbo_approx_2
+        return elbo_approx_1, elbo_approx_2, unpack_params, sample_q

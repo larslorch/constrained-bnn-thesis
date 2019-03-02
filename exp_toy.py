@@ -145,7 +145,7 @@ all_experiments = []
 prototype = {
     'title': '6pt_toy_example',
     'nn': {
-        'architecture': [n_dim, 30, 30, 1],
+        'architecture': [n_dim, 15, 1],
         'nonlinearity': rbf,
         'prior_ds': ds.Normal(0.0, 3.0),
     },
@@ -172,7 +172,7 @@ prototype = {
         ],
     },
     'vi': { # alg options: bbb, npv
-        'alg' : 'npv',
+        'alg': 'npv',
         'bbb_param' : {
             'initialize_q': {
                 'mean': 1.0,  # * torch.randn
@@ -181,10 +181,6 @@ prototype = {
         },
         'npv_param': {
             'mixtures' : 5, 
-            'optim' : {
-                'steps_per_mean' : 10,
-                'steps_std' : 10,
-            },
             'initialize_q': {
                 'mean': 1.0,  # * torch.randn
                 'std': -2.5,  # * torch.ones
@@ -194,9 +190,9 @@ prototype = {
         'batch_size': 0,  # batch_size = 0 implies full dataset training
         'lr' : 0.01,
         'regular': {
-            'iterations': 3,
+            'iterations': 5,
             'restarts': 1,
-            'reporting_every_': 1,
+            'reporting_every_': 10,
             'cores_used': 1,
         },
         'constrained': {
@@ -247,6 +243,7 @@ prototype = {
         'compute_RMSE_ood': False,
         'show_function_samples': True,
         'show_posterior_predictive': True,
+        'show_posterior_predictive_ind': (True, 500),
         'show_plot_training_evaluations': True,
         'show_constraint_function_heatmap': False,
         'plot_size': (6, 4),  # width, height (inches)
