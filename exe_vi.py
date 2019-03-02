@@ -239,7 +239,7 @@ def run_experiment(experiment):
 
     '''Runs nonparametric VI for one random restart'''
     def run_npv(r, constrained):
-        
+
         # initialization: params has shape (mixtures, weights + 1)
         print(50 * '-')
         mixtures = experiment['vi']['npv_param']['mixtures']
@@ -252,7 +252,7 @@ def run_experiment(experiment):
 
         params = Variable(params, requires_grad=True)
         
-        elbo_approx_1, elbo_approx_2, unpack_params, sample_q = \
+        variational_objective, elbo_approx, unpack_params, sample_q = \
             nonparametric_variational_inference(
                 log_posterior, 
                 violation, 
@@ -262,7 +262,7 @@ def run_experiment(experiment):
 
         funcs_passed_on['unpack_params'] = unpack_params
         funcs_passed_on['sample_q'] = sample_q
-        funcs_passed_on['elbo'] = elbo_approx_2
+        funcs_passed_on['elbo'] = elbo_approx
 
         # specific settings
         if constrained:
@@ -287,14 +287,13 @@ def run_experiment(experiment):
         for t in range(iterations):
                         
             optimizer.zero_grad()
-            loss = - elbo_approx_2(params, t) # potentially use first-order approx in the beginning
+            loss = variational_objective(params, t) # potentially use first-order approx in the beginning
             loss.backward()
             optimizer.step()
-            # print('{} / {} | ELBO = {}'.format(t, iterations, - loss))
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
-                elbo = elbo_approx_1(params, t)
+                elbo = elbo_approx(params, t)
                 viol = violation(params, sample_q).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
@@ -318,7 +317,7 @@ def run_experiment(experiment):
                         compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 # command line printing
-                str = 'Step {:7}  ---  Objective: {:15}  ELBO (first-order): {:15}  Violation: {:10}'.format(
+                str = 'Step {:7}  ---  Objective: {:15}  ELBO (second-order): {:15}  Violation: {:10}'.format(
                     t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
 
                 if compute_RMSE_id:

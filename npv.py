@@ -99,7 +99,16 @@ def nonparametric_variational_inference(logp, violation, num_samples=1, constrai
             traces[j] = 0.5 * vars[j] * trace_hessian(y, x)
         return elbo_1 + traces.sum()
 
+    def variational_objective_regular(params, iter):
+        return - elbo_approx_2(params, iter)
+    
+    def variational_objective_constrained(params, iter):
+        return - elbo_approx_2(params, iter) + violation(params, sample_q)
+
     if constrained:
-        return elbo_approx_1, elbo_approx_2, unpack_params, sample_q
+        return variational_objective_constrained, elbo_approx_2, unpack_params, sample_q
     else:
-        return elbo_approx_1, elbo_approx_2, unpack_params, sample_q
+        return variational_objective_regular, elbo_approx_2, unpack_params, sample_q
+
+
+    

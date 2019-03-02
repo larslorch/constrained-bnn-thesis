@@ -180,25 +180,25 @@ prototype = {
             },
         },
         'npv_param': {
-            'mixtures' : 5, 
+            'mixtures' : 10, 
             'initialize_q': {
                 'mean': 1.0,  # * torch.randn
-                'std': -2.5,  # * torch.ones
+                'std': 0.0,  # * torch.ones
             },
         },
         'rv_samples': 100,
         'batch_size': 0,  # batch_size = 0 implies full dataset training
         'lr' : 0.01,
         'regular': {
-            'iterations': 5,
+            'iterations': 300,
             'restarts': 1,
-            'reporting_every_': 10,
+            'reporting_every_': 20,
             'cores_used': 1,
         },
         'constrained': {
-            'iterations': 1000,
+            'iterations': 500,
             'restarts': 1,
-            'reporting_every_': 50,
+            'reporting_every_': 20,
             'cores_used': 1,
             'violation_samples': 5000,
             'tau_tuple': (15.0, 2.0),
@@ -234,8 +234,8 @@ prototype = {
         'thinning': 3,
     },
     'experiment': {
-        'run_regular_vi': True,
-        'run_constrained_vi': False,
+        'run_regular_vi': False,
+        'run_constrained_vi': True,
         'multithread_computation': False,
         'compute_held_out_loglik_id': True,
         'compute_held_out_loglik_ood': False,
