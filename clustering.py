@@ -131,16 +131,30 @@ def hac(modes, sizes, dist, f=1.0):
 # Find best K modes 
 def hac_reps(modes, K, dist, f=1.0, verbose=True):
 
+	# clustering
 	clusters, merge_dists = hac(modes, [K], dist, f=f)
+	clusters = clusters[0]
+
+	# for each cluster, find mediod representative
+	reps = []
+	for c in clusters:
+		mean = c.mean(0)
+		medioid = -1
+		min_dist = float('inf')
+		for j in range(len(c)):
+			new_dist = dist(mean, c[j], f)
+			if new_dist < min_dist:
+				min_dist = new_dist
+				medioid = j
+		reps.append(c[medioid])
 
 	if verbose:
 		for j in range(0, len(modes) - 1):
 			print('Clusters: {:4}      Last merge dist: {}'.format(len(modes) - j - 1, round(merge_dists[j], 3)))
 		
-		print('\nReturned cluster of size {} has components: {}'.format(K, [c.shape[0] for c in clusters[0]]))
+		print('\nReturned cluster of size {} has components: {}'.format(K, [c.shape[0] for c in clusters]))
 
-
-	return clusters[0]
+	return reps
 
 
 
@@ -158,8 +172,8 @@ if __name__ == '__main__':
 	stored_clusters, merge_dists = hac(modes, sizes, dist_ave, f=0.4)
 
 	K = 3
-	clusters = hac_reps(modes, K, dist_ave, f=0.4, verbose=True)
-
+	reps = hac_reps(modes, K, dist_ave, f=0.4, verbose=True)
+	print(reps)
 
 
 
