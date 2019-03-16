@@ -1,6 +1,8 @@
 import torch
+import copy
+import torch.distributions as ds
 
-'''Implements the K-Mediods algorithm for clustering'''
+'''K-Mediods algorithm for clustering'''
 
 def pairwise_dist(A, B):
     n_1, n_2 = A.shape[0], B.shape[0]
@@ -38,6 +40,125 @@ def kmediods(X, n_clusters):
     return cluster_assignment, centers
 
 
+'''Hierarchical Agglomerative Clustering (HAC)'''
+
+# min distance
+def dist_min(c1, c2, f):
+	min_dist = float('inf')
+	for p1 in c1:
+		for p2 in c2:
+			new_dist = torch.norm(p1 - p2, p=f)
+			if new_dist < min_dist:
+				min_dist = new_dist
+	return min_dist
+
+# max distance
+def dist_max(c1, c2, f):
+	max_dist = - float('inf')
+	for p1 in c1:
+		for p2 in c2:
+			new_dist = torch.norm(p1 - p2, p=f)
+			if new_dist > max_dist:
+				max_dist = new_dist
+	return max_dist
+
+# centroid distance
+def dist_centroid(c1, c2, f):
+	return torch.norm(c1.mean(0) - c2.mean(0), p=f)
+
+# average distance
+def dist_ave(c1, c2, f):
+	sum = 0
+	for p1 in c1:
+		for p2 in c2:
+			sum += torch.norm(p1 - p2, p=f)
+	return sum / (len(c1) * len(c2))
+
+
+'''
+HAC algorithm
+
+Inputs
+- modes is shape (N, dim)
+- sizes is list of cluster sizes to be returned 
+- dist is one of the above distance functions
+- f is float defining norm
+
+Return
+- clusters is list of lists of clusters for all sizes of input sizes
+- merge_dists: list of all merging distances
+
+'''
+
+
+def hac(modes, sizes, dist, f=1.0):
+
+	# 1 - every particle is a cluster
+	stored_clusters = []
+	clusters = []
+	merge_dists = []
+	for w in modes:
+		clusters.append(w.unsqueeze(0))
+
+	# 2 - merge closest clusters until there is only one cluster left
+	for n in range(len(clusters) - 1):
+
+		merge_i = -1
+		merge_j = -1
+		min_dist = torch.tensor(float('inf'))
+
+		# 2.1 - find closest pair of cluster
+		for i in range(len(clusters)):
+			for j in range(i + 1, len(clusters)):
+				new_dist = dist(clusters[i], clusters[j], f)
+				if new_dist < min_dist:
+					min_dist = new_dist
+					merge_i = i
+					merge_j = j
+
+		# 2.2 - merge closest clusters
+		clusters[merge_i] = torch.cat([clusters[merge_i], clusters[merge_j]], dim=0)
+		del clusters[merge_j]
+		merge_dists.append(min_dist.item())
+
+		# 2.3 - store cluster
+		if len(clusters) in sizes:
+			stored_clusters.append(clusters.copy())
+	
+	return stored_clusters, merge_dists
+
+
+# Find best K modes 
+def hac_reps(modes, K, dist, f=1.0, verbose=True):
+
+	clusters, merge_dists = hac(modes, [K], dist, f=f)
+
+	if verbose:
+		for j in range(0, len(modes) - 1):
+			print('Clusters: {:4}      Last merge dist: {}'.format(len(modes) - j - 1, round(merge_dists[j], 3)))
+		
+		print('\nReturned cluster of size {} has components: {}'.format(K, [c.shape[0] for c in clusters[0]]))
+
+
+	return clusters[0]
+
+
+
+
+if __name__ == '__main__':
+
+	
+	modes = torch.cat([
+		ds.MultivariateNormal(torch.zeros(2), 0.1 * torch.eye(2)).sample(torch.Size([10])),
+		ds.MultivariateNormal(5 * torch.ones(2), 0.1 * torch.eye(2)).sample(torch.Size([6])),
+		ds.MultivariateNormal(-3 * torch.ones(2), 0.1 * torch.eye(2)).sample(torch.Size([6]))
+		], dim=0)
+
+	sizes = list(range(1, 5))
+	stored_clusters, merge_dists = hac(modes, sizes, dist_ave, f=0.4)
+
+	K = 3
+	clusters = hac_reps(modes, K, dist_ave, f=0.4, verbose=True)
 
 
 

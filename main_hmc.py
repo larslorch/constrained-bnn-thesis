@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import math
 import time
@@ -201,15 +203,15 @@ def main_hmc(all_experiments):
         X_plot = experiment['data']['X_plot']
 
         '''BbB settings'''
-        batch_size = experiment['bbb']['batch_size']
+        batch_size = experiment['vi']['batch_size']
         num_batches = int(torch.ceil(torch.tensor(
             X.shape[0] / batch_size))) if batch_size else 1
 
         '''Constraints'''
-        gamma = experiment['bbb']['constrained']['gamma']
-        tau = experiment['bbb']['constrained']['tau_tuple']
-        violation_samples = experiment['bbb']['constrained']['violation_samples']
-        constrained_region_sampler = experiment['bbb']['constrained']['constrained_region_sampler']
+        gamma = experiment['vi']['constrained']['gamma']
+        tau = experiment['vi']['constrained']['tau_tuple']
+        violation_samples = experiment['vi']['constrained']['violation_samples']
+        constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
         constr = experiment['constraints']['constr']
         constr_plot = experiment['constraints']['plot']
 
@@ -236,8 +238,13 @@ def main_hmc(all_experiments):
             # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
             return l
 
-        def target(weights):
-            return log_prob(weights, X, Y)  - violation(weights) 
+        if experiment['hmc']['constrained']:
+            def target(weights):
+                return log_prob(weights, X, Y)  - violation(weights) 
+        else:
+            def target(weights):
+                return log_prob(weights, X, Y)
+      
 
 
         '''HMC'''
@@ -259,16 +266,25 @@ def main_hmc(all_experiments):
             print('HMC.')
             sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
 
-        init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
-               * torch.randn(1, num_weights) # batch of 1 for BNN weights
-        samples, acceptance_probs = sampler(hmc_samples, init)
-        samples = samples.squeeze()  # align batch dim
-        print('Average acceptance probability after burnin: {}'.format(
-            acceptance_probs[burnin:].mean()))
+        if experiment['hmc']['load_saved']:
+            
+            samples = torch.load('experiment_results/hmc_samples/' + experiment['title'])
 
-        # burnin and thinning 
-        samples = samples[burnin:, :]  
-        samples = samples[torch.arange(0, hmc_samples - burnin - 1, thinning), :]
+        else:
+            init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
+                * torch.randn(1, num_weights) # batch of 1 for BNN weights
+            samples, acceptance_probs = sampler(hmc_samples, init)
+            samples = samples.squeeze()  # align batch dim
+            print('Average acceptance probability after burnin: {}'.format(
+                acceptance_probs[burnin:].mean()))
+
+            # burnin and thinning 
+            samples = samples[burnin:, :]  
+            samples = samples[torch.arange(0, hmc_samples - burnin - 1, thinning), :]
+
+
+            # save
+            torch.save(samples, 'experiment_results/hmc_samples/' + experiment['title'])
 
         y_pred = forward(samples, X_plot)
         mean = y_pred.mean(0, keepdim=True)
@@ -282,19 +298,66 @@ def main_hmc(all_experiments):
         ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
                     y_pred.squeeze().transpose(0, 1).numpy(), 
                     c='blue',
-                    alpha=0.02)
+                    alpha=0.02,
+                    linewidth=2)
         ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
-        ax.set_title(
-                'Function samples for {} BNN using HMC'.format(architecture))
-        plt.show()
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.yaxis.set_ticks_position('left')
+        ax.xaxis.set_ticks_position('bottom')
+        # ax.set_title(
+        #         'Function samples for {} BNN using HMC'.format(architecture))
+        plt.savefig('experiment_results/hmc_samples_' + experiment['title'] + '.png',
+                    format='png', frameon=False, dpi=400)
+        
+        ax.set_xlim(experiment['data']['plt_x_domain'])
+        ax.set_ylim(experiment['data']['plt_y_domain'])
+        # ax.spines['bottom'].set_bounds(-4.5, 4.5)
+        bot, top = ax.get_ylim()
+        # ax.spines['left'].set_bounds(bot + 0.5, top - 0.5)
 
-        # plt.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='black')
-        # plt.fill_between(X_plot.squeeze().numpy(),
-        #                 (mean - 2 * std).squeeze().numpy(),
-        #                 (mean + 2 * std).squeeze().numpy(),
-        #                 color='black',
-        #                 alpha=0.3)
-        # plt.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
-        # plt.title(
+        ax.set_xlabel(r"$x$", fontsize=12)
+        tmp = ax.set_ylabel(r"$\phi(x; \mathcal{W})$", fontsize=12)
+        tmp.set_rotation(0)
+        ax.yaxis.set_label_coords(-0.15, 0.50)
+        plt.gcf().subplots_adjust(left=0.2)
+        plt.show()
+        plt.close('all')
+
+
+        #
+        fig, ax = plt.subplots()
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.yaxis.set_ticks_position('left')
+        ax.xaxis.set_ticks_position('bottom')
+
+        ax.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='blue')
+        ax.fill_between(X_plot.squeeze().numpy(),
+                        (mean - 1 * std).squeeze().numpy(),
+                        (mean + 1 * std).squeeze().numpy(),
+                        color='blue',
+                        alpha=0.3)
+        ax.fill_between(X_plot.squeeze().numpy(),
+                         (mean - 2 * std).squeeze().numpy(),
+                         (mean + 2 * std).squeeze().numpy(),
+                         color='blue',
+                         alpha=0.2)
+        ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+        ax.set_xlim(experiment['data']['plt_x_domain'])
+        ax.set_ylim(experiment['data']['plt_y_domain'])
+        # ax.spines['bottom'].set_bounds(-4.5, 4.5)
+        bot, top = ax.get_ylim()
+        # ax.spines['left'].set_bounds(bot + 0.5, top - 0.5)
+        ax.set_xlabel(r"$x$", fontsize=12)
+        
+        tmp = ax.set_ylabel(r"$\phi(x; \mathcal{W})$", fontsize=12)
+        tmp.set_rotation(0)
+
+        ax.yaxis.set_label_coords(-0.15, 0.50)
+        plt.gcf().subplots_adjust(left=0.2)
+        # ax.set_title(
         #     'Posterior predictive for {} BNN using HMC'.format(architecture))
-        # plt.show()
+        plt.savefig('experiment_results/hmc_pp_' + experiment['title'] +'.png',
+                    format='png', frameon=False, dpi=400)
+        plt.show()

@@ -59,7 +59,7 @@ N, n_dim = 10, 1
 
 
 def ground_truth(x):
-    return - x.pow(4) + 3 * x.pow(2) + 1
+    return - 0.6666 * x.pow(4) + x.pow(2) + 1
 
 
 X = torch.tensor([-2, -1.8, -1, 1, 1.8, 2]).unsqueeze(1)
@@ -145,9 +145,9 @@ all_experiments = []
 prototype = {
     'title': '6pt_toy_example',
     'nn': {
-        'architecture': [n_dim, 15, 1],
-        'nonlinearity': rbf,
-        'prior_ds': ds.Normal(0.0, 3.0),
+        'architecture': [n_dim, 20, 1],
+        'nonlinearity': relu,
+        'prior_ds': ds.Normal(0.0, 2.0),
     },
     'data': {
         'noise_ds': ds.Normal(0.0, 0.1),
@@ -167,7 +167,7 @@ prototype = {
         'constr': constr,
         'plot': [
             # DrawRectangle(bottom_left=(3, -0.5), top_right=(4, 1.5)),
-            DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
+            # DrawRectangle(bottom_left=(-0.5, 2.5), top_right=(0.5, 4.5)),
            #  DrawRectangle(bottom_left=(-4, -3.5), top_right=(-3, -1.5)),
         ],
     },
@@ -190,15 +190,15 @@ prototype = {
         'batch_size': 0,  # batch_size = 0 implies full dataset training
         'lr' : 0.01,
         'regular': {
-            'iterations': 300,
+            'iterations': 200,
             'restarts': 1,
-            'reporting_every_': 20,
+            'reporting_every_': 10,
             'cores_used': 1,
         },
         'constrained': {
-            'iterations': 500,
+            'iterations': 200,
             'restarts': 1,
-            'reporting_every_': 20,
+            'reporting_every_': 10,
             'cores_used': 1,
             'violation_samples': 5000,
             'tau_tuple': (15.0, 2.0),
@@ -212,8 +212,10 @@ prototype = {
 
     },
     'hmc': {
+        'load_saved' : False,
+        'constrained' : False,
         'darting': {
-            'bool': True,
+            'bool': False,
             'preprocessing': {
                 'bool': False,
                 'show_mode_cluster_analysis': False,
@@ -227,15 +229,15 @@ prototype = {
                 'p_check': 0.03,
             },
         },
-        'stepsize': 0.01,
-        'steps': 30,
-        'hmc_samples': 2000,
-        'burnin': 0,
+        'stepsize': 0.005,
+        'steps': 20,
+        'hmc_samples': 5000,
+        'burnin': 2000,
         'thinning': 3,
     },
     'experiment': {
-        'run_regular_vi': False,
-        'run_constrained_vi': True,
+        'run_regular_vi': True,
+        'run_constrained_vi': False,
         'multithread_computation': False,
         'compute_held_out_loglik_id': True,
         'compute_held_out_loglik_ood': False,
@@ -253,6 +255,6 @@ prototype = {
 
 all_experiments.append(prototype)
 
-main_vi(all_experiments)
-# main_hmc(all_experiments)
+# main_vi(all_experiments)
+main_hmc(all_experiments)
 

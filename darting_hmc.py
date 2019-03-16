@@ -14,7 +14,7 @@ from torch.autograd import Variable
 from bnn import make_BNN
 from utils import *
 
-from kmeans import kmediods
+from clustering import kmediods
 import numpy as np
 
 '''
