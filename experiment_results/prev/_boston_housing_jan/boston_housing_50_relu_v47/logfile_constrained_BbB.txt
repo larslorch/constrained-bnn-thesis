@@ -1,0 +1,208 @@
+
+
+Experiment results : constrained_BbB  | experiment_results/boston_housing_50_relu_v47
+
+
+*** Objective function ***
+
+BEST: nan
+All restarts:
+nan
+
+
+*** ELBO ***
+
+BEST (by objective): nan
+All restarts:
+nan
+
+
+*** Posterior predictive mass violation ***
+
+BEST (by objective): 0.0
+All restarts:
+0.0
+
+
+*** In-distribution held-out log likelihood ***
+
+BEST (by objective): nan
+All restarts:
+nan
+
+
+*** In-distribution validation RMSE ***
+
+BEST (by objective): nan
+All restarts:
+nan
+
+
+
+----------------------------------------------------------------------
+--- EXPERIMENT SETUP ---
+----------------------------------------------------------------------
+
+- Regular BbB:
+
+Iterations:
+10000
+
+BbB r.v. samples for grad.:
+100
+
+----------------------------------------------------------------------
+
+- Constrained BbB:
+
+Iterations:
+10
+
+BbB r.v. samples for gradient:
+100
+
+Gamma:
+20000
+
+Tau:
+(15.0, 2.0)
+
+----------------------------------------------------------------------
+
+- Constraints in (x space, y-space):
+
+Constraints for regions:
+X constraints: [<function at_c0 at 0x123ee3b70>, <function at_c1 at 0x10f8b5d08>, <function v_c0 at 0x123f59488>, <function v_c1 at 0x123f59400>, <function ap_c0 at 0x123f59510>, <function ap_c1 at 0x123f59598>, <function rh_c0 at 0x123f59620>, <function rh_c1 at 0x123f596a8>]
+Y constraints:[<function ep_c0 at 0x123f59730>, <function ep_c1 at 0x123f597b8>]
+
+
+----------------------------------------------------------------------
+
+- NN:
+
+Architecture:
+
+Nonlinearity:
+custom torch.autograd.funtion
+
+----------------------------------------------------------------------
+
+- Data:
+
+Input data X:
+tensor([[  32.0000,   71.8500, 1008.4400,   53.5900],
+        [  29.7200,   68.0800, 1010.7200,   53.4600],
+        [  12.5300,   43.5600, 1014.8000,   74.0500],
+        ...,
+        [   4.4900,   40.2700, 1012.0100,   76.5000],
+        [  19.9200,   46.9700, 1014.3200,   69.1700],
+        [  26.2500,   52.0900, 1013.2000,   53.1200]])
+
+Output data Y:
+tensor([[427.9500],
+        [430.3600],
+        [469.2300],
+        ...,
+        [494.2400],
+        [459.3900],
+        [450.5300]])
+
+ID test set:
+tensor([[  17.4700,   63.3100, 1015.2800,   88.2200],
+        [  12.5300,   42.0300, 1017.5700,   81.5700],
+        [   8.6400,   39.6900, 1001.5700,   98.2700],
+        ...,
+        [  23.8500,   72.4300, 1008.0100,   88.3400],
+        [  14.0400,   40.2000, 1013.2900,   89.5400],
+        [  15.9600,   41.6600, 1011.9300,   55.4700]])
+
+OOD test set:
+None
+
+
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+
+ --- Full dictionary ---
+
+{'bbb': {'BbB_rv_samples': 100,
+         'batch_size': 8,
+         'constrained': {'constrained_region_sampler': <function constrained_region_sampler at 0x123f59840>,
+                         'cores_used': 1,
+                         'gamma': 20000,
+                         'iterations': 10,
+                         'reporting_every_': 1,
+                         'restarts': 1,
+                         'tau_tuple': (15.0, 2.0),
+                         'violation_samples': 500},
+         'initialize_q': {'mean': 1.0, 'std': -5.0},
+         'posterior_predictive_analysis': {'constrained_region_samples_for_pp_violation': 50,
+                                           'posterior_samples': 50},
+         'regular': {'cores_used': 1,
+                     'iterations': 10000,
+                     'reporting_every_': 50,
+                     'restarts': 1}},
+ 'constraints': {'constr': [([<function at_c0 at 0x123ee3b70>,
+                              <function at_c1 at 0x10f8b5d08>,
+                              <function v_c0 at 0x123f59488>,
+                              <function v_c1 at 0x123f59400>,
+                              <function ap_c0 at 0x123f59510>,
+                              <function ap_c1 at 0x123f59598>,
+                              <function rh_c0 at 0x123f59620>,
+                              <function rh_c1 at 0x123f596a8>],
+                             [<function ep_c0 at 0x123f59730>,
+                              <function ep_c1 at 0x123f597b8>])],
+                 'plot': []},
+ 'data': {'X': tensor([[  32.0000,   71.8500, 1008.4400,   53.5900],
+        [  29.7200,   68.0800, 1010.7200,   53.4600],
+        [  12.5300,   43.5600, 1014.8000,   74.0500],
+        ...,
+        [   4.4900,   40.2700, 1012.0100,   76.5000],
+        [  19.9200,   46.9700, 1014.3200,   69.1700],
+        [  26.2500,   52.0900, 1013.2000,   53.1200]]),
+          'X_plot': None,
+          'X_v_id': tensor([[  17.4700,   63.3100, 1015.2800,   88.2200],
+        [  12.5300,   42.0300, 1017.5700,   81.5700],
+        [   8.6400,   39.6900, 1001.5700,   98.2700],
+        ...,
+        [  23.8500,   72.4300, 1008.0100,   88.3400],
+        [  14.0400,   40.2000, 1013.2900,   89.5400],
+        [  15.9600,   41.6600, 1011.9300,   55.4700]]),
+          'X_v_ood': None,
+          'Y': tensor([[427.9500],
+        [430.3600],
+        [469.2300],
+        ...,
+        [494.2400],
+        [459.3900],
+        [450.5300]]),
+          'Y_plot': None,
+          'Y_v_id': tensor([[450.6800],
+        [469.1800],
+        [473.5500],
+        ...,
+        [439.0200],
+        [465.2500],
+        [466.3900]]),
+          'Y_v_ood': None,
+          'integral_constrained_region': 14,
+          'noise_ds': Normal(),
+          'plt_x_domain': (-13, 11),
+          'plt_y_domain': (-2.5, 2.5)},
+ 'experiment': {'compute_RMSE_id': True,
+                'compute_RMSE_ood': False,
+                'compute_held_out_loglik_id': True,
+                'compute_held_out_loglik_ood': False,
+                'multithread_computation': False,
+                'plot_size': (6, 4),
+                'run_constrained_BbB': True,
+                'run_regular_BbB': False,
+                'show_constraint_function_heatmap': False,
+                'show_function_samples': False,
+                'show_plot_training_evaluations': True,
+                'show_posterior_predictive': False},
+ 'nn': {'architecture': [4, 100, 100, 1],
+        'nonlinearity': <built-in method apply of FunctionMeta object at 0x7f9547ee8758>,
+        'prior_ds': Normal()},
+ 'title': 'boston_housing_50_relu'}
+
