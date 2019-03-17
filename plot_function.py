@@ -10,17 +10,17 @@ from utils import *
 from plot import *
 
 # tau_s < tau_b
-size_tup = (4, 4)  # width, height (inches)
+size_tup = (3.5, 3.5)  # width, height (inches)
 
 fig, ax = plt.subplots(1, 1, figsize=(size_tup[0], size_tup[1]))
 # plt.rc('text', usetex=True)
 # plt.rc('font', family='serif')
 
 
-x = torch.linspace(-5, 5, steps=200)
-# y = 3 *  torch.exp(-x.pow(2)) * torch.sin(5 * x)
-y = 3 * torch.exp(-x.pow(2)) * (-x.pow(4) + x.pow(2) + 1)
-ax.plot(x.numpy(), y.numpy(), '-', color='blue', linewidth=1)
+x = torch.linspace(-5, 5, steps=1000)
+y = 2 * torch.exp(- x.pow(2)) * torch.sin(5 * x)
+# y = -0.666667 * x.pow(4) + 4/3  * x.pow(2) + 1
+ax.plot(x.numpy(), y.numpy(), '-', color='black', linewidth=1)
 
 
 ax.spines['top'].set_color('none')
@@ -28,9 +28,9 @@ ax.spines['right'].set_color('none')
 ax.spines['left'].set_position(('data', 0))
 ax.spines['bottom'].set_position(('data', 0))
 ax.set_xlim((-4, 4))
-ax.set_ylim((-4, 4))
+ax.set_ylim((-3, 3))
 ax.set_xlabel(r'$x$', fontsize=12)
-tmp = ax.set_ylabel(r"$g(x)$", fontsize=12)
+tmp = ax.set_ylabel(r"$f(x)$", fontsize=12)
 tmp.set_rotation(0)
 ax.xaxis.set_label_coords(1.05, 0.52)
 ax.yaxis.set_label_coords(0.50, 1.05)

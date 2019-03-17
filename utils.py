@@ -1,6 +1,8 @@
 import inspect
 import pprint
 import torch
+import os
+import joblib
 
 # stable computation using tanh
 
@@ -9,6 +11,32 @@ def sig(z, tau_c):
 
 def psi(z, tau_c, tau_g):
     return 0.25 * (torch.tanh(- tau_c * z) + 1) * (torch.tanh(- tau_g * z) + 1)
+
+
+'''
+Make unique directory for results
+'''
+def make_unique_dir(experiment, method='vi'):
+    directory = 'experiment_results/' + experiment['title'] + '_v'
+    j = 0
+    while os.path.exists(directory + str(j)):
+        j += 1
+    current_directory = directory + str(j)
+    os.makedirs(current_directory)
+
+    joblib.dump(experiment, current_directory +
+            '/experiment_settings_dict.pkl')
+    
+    if method == 'vi':
+        q_param_directory = current_directory + '/' + method
+        os.makedirs(q_param_directory)
+
+    if method == 'hmc':
+        hmc_directory = current_directory + '/' + method
+        os.makedirs(hmc_directory)
+
+    return current_directory
+
 
 
 '''

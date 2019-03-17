@@ -201,6 +201,8 @@ def main_hmc(all_experiments):
         X = experiment['data']['X']
         Y = experiment['data']['Y']
         X_plot = experiment['data']['X_plot']
+        Y_plot = experiment['data']['Y_plot']
+        plt_size = experiment['data']['plt_size']
 
         '''BbB settings'''
         batch_size = experiment['vi']['batch_size']
@@ -208,13 +210,19 @@ def main_hmc(all_experiments):
             X.shape[0] / batch_size))) if batch_size else 1
 
         '''Constraints'''
-        gamma = experiment['vi']['constrained']['gamma']
+        gamma = experiment['hmc']['gamma']
         tau = experiment['vi']['constrained']['tau_tuple']
         violation_samples = experiment['vi']['constrained']['violation_samples']
         constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
         constr = experiment['constraints']['constr']
         constr_plot = experiment['constraints']['plot']
+        
+        '''Make directory for results'''
+        current_directory = make_unique_dir(experiment, method='hmc')
+        load_saved = experiment['hmc']['load_saved']
+        load_from = experiment['hmc']['load_from']
 
+        
         '''Define BNN (constrained and unconstrained)'''
         num_weights, forward, log_prob = \
             make_BNN(layer_sizes=architecture,
@@ -234,8 +242,13 @@ def main_hmc(all_experiments):
                 for constraint in region:
                     d *= psi(constraint(x, y), tau_c, tau_g)
                 c += d
-            l = gamma * c.sum() / y.numel()
-            # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
+            
+            if experiment['hmc']['max_violation_heuristic']:
+                l = gamma * c.max() 
+                # returns max violation along y.shape 
+                # empirically better when using preprocessing procedure for darting hmc
+            else:
+                l = gamma * c.sum() / y.numel()
             return l
 
         if experiment['hmc']['constrained']:
@@ -261,14 +274,15 @@ def main_hmc(all_experiments):
             dct = experiment['hmc']['darting']
             dct['num_weights'] = num_weights
             
-            sampler = make_darting_HMC_sampler(target, steps, stepsize, dct, loglik=None, forward=forward, experiment=experiment)
+            sampler = make_darting_HMC_sampler(target, steps, stepsize, dct, loglik=None,
+                                               forward=forward, experiment=experiment, current_directory=current_directory)
         else:
             print('HMC.')
             sampler = make_HMC_sampler(target, steps, stepsize, loglik=None)
 
-        if experiment['hmc']['load_saved']:
+        if load_saved:
             
-            samples = torch.load('experiment_results/hmc_samples/' + experiment['title'])
+            samples = torch.load('experiment_results/' + load_from  + '/hmc/' + experiment['title'] + '_samples.pt')
 
         else:
             init = torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
@@ -284,7 +298,8 @@ def main_hmc(all_experiments):
 
 
             # save
-            torch.save(samples, 'experiment_results/hmc_samples/' + experiment['title'])
+            torch.save(samples, current_directory + '/hmc/' +
+                       experiment['title'] + '_samples.pt')
 
         y_pred = forward(samples, X_plot)
         mean = y_pred.mean(0, keepdim=True)
@@ -292,9 +307,10 @@ def main_hmc(all_experiments):
 
         '''Approximate posterior predictive for test points'''
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=plt_size)
         for p in constr_plot:
             ax.add_patch(p.get())
+        ax.plot(X_plot.squeeze().numpy(), Y_plot.squeeze().numpy(), c='black', linestyle=':')
         ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
                     y_pred.squeeze().transpose(0, 1).numpy(), 
                     c='blue',
@@ -307,8 +323,8 @@ def main_hmc(all_experiments):
         ax.xaxis.set_ticks_position('bottom')
         # ax.set_title(
         #         'Function samples for {} BNN using HMC'.format(architecture))
-        plt.savefig('experiment_results/hmc_samples_' + experiment['title'] + '.png',
-                    format='png', frameon=False, dpi=400)
+        # plt.savefig(current_directory + '/hmc/' + experiment['title'] + '.png',
+        #             format='png', frameon=False, dpi=400)
         
         ax.set_xlim(experiment['data']['plt_x_domain'])
         ax.set_ylim(experiment['data']['plt_y_domain'])
@@ -321,17 +337,22 @@ def main_hmc(all_experiments):
         tmp.set_rotation(0)
         ax.yaxis.set_label_coords(-0.15, 0.50)
         plt.gcf().subplots_adjust(left=0.2)
+        
+        plt.savefig(current_directory + '/hmc/' + experiment['title'] + '_particles.png',
+                    format='png', frameon=False, dpi=400)
         plt.show()
         plt.close('all')
 
 
         #
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=plt_size)
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
         ax.yaxis.set_ticks_position('left')
         ax.xaxis.set_ticks_position('bottom')
-
+        for p in constr_plot:
+            ax.add_patch(p.get())
+        ax.plot(X_plot.squeeze().numpy(), Y_plot.squeeze().numpy(), c='black', linestyle=':')
         ax.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='blue')
         ax.fill_between(X_plot.squeeze().numpy(),
                         (mean - 1 * std).squeeze().numpy(),
@@ -358,6 +379,6 @@ def main_hmc(all_experiments):
         plt.gcf().subplots_adjust(left=0.2)
         # ax.set_title(
         #     'Posterior predictive for {} BNN using HMC'.format(architecture))
-        plt.savefig('experiment_results/hmc_pp_' + experiment['title'] +'.png',
+        plt.savefig(current_directory + '/hmc/'+ experiment['title'] + '_filled.png',
                     format='png', frameon=False, dpi=400)
         plt.show()

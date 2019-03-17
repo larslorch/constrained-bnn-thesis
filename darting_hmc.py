@@ -14,7 +14,7 @@ from torch.autograd import Variable
 from bnn import make_BNN
 from utils import *
 
-from clustering import kmediods
+from clustering import hac_reps, dist_min, dist_max, dist_centroid, dist_ave
 import numpy as np
 
 '''
@@ -25,19 +25,21 @@ http://proceedings.mlr.press/v2/sminchisescu07a/sminchisescu07a.pdf
 '''
 
 
-def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, experiment=None):
+def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, experiment=None, current_directory=None):
     
     '''Preprocessing'''
     print('Searching p(x) for modes...')
 
     num_weights = dct['num_weights']
-    do_preprocessing = dct['preprocessing']['bool']
+    load_saved = dct['preprocessing']['load_saved']
+    load_from = dct['preprocessing']['load_from']
     searched_modes = dct['preprocessing']['searched_modes']
     mode_searching_convergence = dct['preprocessing']['mode_searching_convergence']
-    show_mode_cluster_analysis = dct['preprocessing']['show_mode_cluster_analysis']
+    norm_f = dct['preprocessing']['norm_f']
+    scale = dct['preprocessing']['random_restart_scale']
     n_darting_regions = dct['preprocessing']['n_darting_regions']
 
-    if do_preprocessing:
+    if not load_saved:
         # loss
         def loss_func(w):
             return - logp(w)
@@ -46,7 +48,6 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
         # find m modes of log p(x)
         modes = torch.zeros(searched_modes, num_weights)
         for m in tqdm(range(searched_modes)):
-            scale = 2
             w = scale * torch.max(torch.cat([torch.randn(1).abs(), torch.tensor([1]).float()])) \
                     * torch.randn(1, num_weights)  # batch of 1 for BNN weights
             w.requires_grad_(True)
@@ -82,65 +83,15 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                 logp(modes[j].unsqueeze(0)).item()))
         print()
 
-        # X = runPCA(modes, k=pca_dim) -- actually not sure if this makes sense: 
-        # not possible to reconstruct modes completelylater?
-        X = modes
-
-        # pre-analysis of preprocessing parameters
-        if show_mode_cluster_analysis:
-
-            # plot modes using PCA
-            X_plot = runPCA(modes, k=2)
-            plt.scatter(X_plot[:, 0].numpy(), X_plot[:, 1].numpy())
-            plt.title('PCA of log p(x) modes')
-            plt.show()
-            plt.close('all')
-
-            # search over possible cluster sizes
-            sses = []
-            print('Clustering modes...')
-            for k in tqdm(range(2, 20)):
-                best_sse = torch.tensor(float('inf'))
-                for _ in range(10):
-                    clusters_index, centers = kmediods(X.clone(), k)
-                    sse = 0
-                    for i in range(k):
-                        if i not in clusters_index:
-                            break
-                        selected = X[clusters_index == i]
-                        sse += (selected - centers[i].unsqueeze(0)).pow(2).sum()
-                    if sse < best_sse:
-                        best_sse = sse
-                sses.append(best_sse.item())
-
-            plt.plot(list(range(2, k_means_tried)), sses)
-            plt.title('Ave. Sum of Squared Error K-Mediods over 10 runs')
-            plt.xlabel('Number of clusters')
-            plt.show()
-
-
-        # actually find good clustering of modes for darting regions
-        best_sse = torch.tensor(float('inf'))
-        darting_points = None
-        for _ in range(20):
-            clusters_index, centers = kmediods(X.clone(), n_darting_regions)
-            sse = 0
-            for i in range(n_darting_regions):
-                if i not in clusters_index:
-                    break
-                selected = X[clusters_index == i]
-                sse += (selected - centers[i].unsqueeze(0)).pow(2).sum()
-            if sse < best_sse:
-                best_sse = sse
-                darting_points = centers
+        darting_points = hac_reps(
+            modes, n_darting_regions, dist_centroid, f=norm_f, verbose=True)
         
-        torch.save(darting_points, 'darting_cache/' +
-                   dct['preprocessing']['file_name'] + '.pt')        
+        torch.save(darting_points, current_directory + '/hmc/' + experiment['title'] + '_preprocessing.pt' )
         
     # Use pre-loaded darting points
     else: 
-        darting_points = torch.load('darting_cache/' +
-                                    dct['preprocessing']['file_name'] + '.pt')
+        darting_points = torch.load(
+            'experiment_results/' + load_from + '/hmc/' + experiment['title'] + '_preprocessing.pt')
        
     # darting settings
     darting_region_radius = dct['algorithm']['darting_region_radius']
@@ -209,6 +160,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
         samples[0] = x_init
         acceptance_probs = torch.zeros(N - 1)
         successful_darts = 0
+        unsuccessful_darts = 0
 
         # burned in init at mode
         samples[0] = darting_points[0]
@@ -263,6 +215,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                     print('.. rejected. ')
                     # reject
                     samples[i + 1] = x
+                    unsuccessful_darts += 1
 
             else:
 
@@ -308,6 +261,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                     break
 
         print('Successful darts: {}'.format(successful_darts))
+        print('Rejected darting attempts: {}'.format(unsuccessful_darts))
 
         return samples, acceptance_probs
 

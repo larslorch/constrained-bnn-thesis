@@ -77,7 +77,7 @@ def run_experiment(experiment):
         compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
 
     '''Make directory for results'''
-    current_directory = make_unique_dir(experiment)
+    current_directory = make_unique_dir(experiment, method='vi')
     
     funcs_passed_on = dict()
 
@@ -474,21 +474,3 @@ def compute_posterior_predictive_violation(params, funcs, experiment):
     return violations
 
 
-'''
-Make unique directory for results
-'''
-def make_unique_dir(experiment):
-    directory = 'experiment_results/' + experiment['title'] + '_v'
-    j = 0
-    while os.path.exists(directory + str(j)):
-        j += 1
-    current_directory = directory + str(j)
-    os.makedirs(current_directory)
-
-    joblib.dump(experiment, current_directory +
-            '/experiment_settings_dict.pkl')
-    
-    q_param_directory = current_directory + '/optimization_data_results'
-    os.makedirs(q_param_directory)
-
-    return current_directory

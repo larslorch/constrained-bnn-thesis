@@ -153,8 +153,12 @@ def hac_reps(modes, K, dist, f=1.0, verbose=True):
 			print('Clusters: {:4}      Last merge dist: {}'.format(len(modes) - j - 1, round(merge_dists[j], 3)))
 		
 		print('\nReturned cluster of size {} has components: {}'.format(K, [c.shape[0] for c in clusters]))
-
-	return reps
+	
+	# turn into tensor
+	out = torch.zeros(len(reps), reps[0].shape[0])
+	for i in range(len(reps)):
+		out[i] = reps[i]
+	return out
 
 
 
@@ -177,7 +181,7 @@ if __name__ == '__main__':
 
 
 
-
+	# Finished HAC. Try on Darting MCMC now
 
 
 
