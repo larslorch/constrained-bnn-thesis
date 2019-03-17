@@ -1,5 +1,6 @@
 datasets/
-experiment_results/
+*.pt
+*.pkl
 HIPS/
 .DS_Store
 
