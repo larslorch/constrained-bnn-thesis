@@ -23,6 +23,7 @@ from utils import *
 from exe_vi import *
 from bbb import bayes_by_backprop_variational_inference
 from bnn import make_BNN
+from pp_violation import compute_posterior_predictive_violation_vi
 
 
 '''
@@ -61,7 +62,7 @@ def main_vi(all_experiments):
             opt_param = params[best]
 
             # compute posterior predictive violation
-            violations = compute_posterior_predictive_violation(
+            violations = compute_posterior_predictive_violation_vi(
                 params, funcs, experiment)
 
             '''Plotting'''

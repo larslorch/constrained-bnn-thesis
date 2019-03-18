@@ -60,7 +60,7 @@ f_prototype = {
         'plt_x_domain': (-4.0, 4.0),
         'plt_y_domain': (-9, 14.0),
         'plt_size' : (5, 4),
-        'integral_constrained_region': 0,
+        'integral_constrained_input_region': 0,
         'X':  X_f,
         'Y':  Y_f,
         'X_plot': X_plot_f,
@@ -72,7 +72,8 @@ f_prototype = {
     },
     'constraints': {
         'constr': [],
-        'plot': [],
+        'plot_patch': [],
+        'plot_between': [],
     },
     'vi': { # alg options: bbb, npv
         'alg': 'npv',
@@ -139,7 +140,7 @@ f_prototype = {
         'steps': 25,
         'hmc_samples': 7000,
         'burnin': 2000,
-        'thinning': 3,
+        'thinning': 5,
     },
     'experiment': {
         'run_regular_vi': True,
@@ -182,7 +183,8 @@ g_prototype = {
     },
     'constraints': {
         'constr': [],
-        'plot': [],
+        'plot_patch': [],
+        'plot_between': [],
     },
     'vi': {  # alg options: bbb, npv
         'alg': 'npv',
@@ -270,9 +272,7 @@ g_prototype = {
 }
 
 
-
-
-'''Fig 4.1 ground truth f'''
+''' ************************ Fig 4.1 ground truth f ************************ '''
 
 exp = copy.deepcopy(f_prototype)
 
@@ -283,7 +283,7 @@ exp['hmc']['load_from'] = 'fig_4_1_v1'
 # main_hmc([exp])
 
 
-'''Fig 4.2 ground truth g'''
+''' ************************ Fig 4.2 ground truth g ************************ '''
 exp = copy.deepcopy(g_prototype)
 
 exp['title'] = 'fig_4_2'
@@ -292,21 +292,21 @@ exp['hmc']['load_from'] = 'fig_4_2_v1'
 
 # main_hmc([exp])
 
-'''Fig 4.3 linear bound'''
+''' ************************ Fig 4.3 linear bound ************************ '''
 exp = copy.deepcopy(f_prototype)
 
 def y_4_3_0(x, y):
-    return y + 2
+    return y + 2.5
 
 def y_4_3_1(x, y):
-    return - y + 2
+    return - y + 2.5
 
 constr = [
     [y_4_3_0],
     [y_4_3_1],
 ]
 
-plot_constr = [
+plot_patch = [
     DrawRectangle(bottom_left=(-6, -20), top_right=(6, -2)),
     DrawRectangle(bottom_left=(-6, 2), top_right=(6, 20)),
 ]
@@ -317,14 +317,124 @@ def constrained_region_sampler_4_3(s):
 
 
 exp['title'] = 'fig_4_3'
+exp['hmc']['load_saved'] = True
+exp['hmc']['load_from'] = 'fig_4_3_v0'
 
-exp['data']['plt_y_domain'] = (-4.0, 40)
+
+exp['data']['plt_y_domain'] = (-4.0, 4.0)
 exp['constraints']['constr'] = constr
-exp['constraints']['plot'] = plot_constr
+exp['constraints']['plot_patch'] = plot_patch
 exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_3
+exp['data']['integral_constrained_input_region'] = 12
 
 exp['hmc']['constrained'] = True
 exp['hmc']['hmc_samples'] = 7000
 exp['hmc']['burnin'] = 2000
+exp['hmc']['gamma'] = 5000
+
+# main_hmc([exp])
+
+''' ************************ Fig 4.3 nonlinear bound ************************ '''
+exp = copy.deepcopy(f_prototype)
+
+def y_4_3_2(x, y):
+    return y + 0.5 + 2 * torch.exp(- x.pow(2))
+
+
+def y_4_3_3(x, y):
+    return - y + 0.5 + 2 * torch.exp(- x.pow(2))
+
+
+constr_4_3_2 = [
+    [y_4_3_2],
+    [y_4_3_3],
+]
+
+plot_patch = []
+
+plot_between = [
+    (X_plot_f, 0.5 + 2 * torch.exp(- X_plot_f.pow(2)), 10 * torch.ones(X_plot_f.shape)),
+    (X_plot_f, -10 * torch.ones(X_plot_f.shape), -0.5 - 2 * torch.exp(- X_plot_f.pow(2))),
+]
+
+
+exp['title'] = 'fig_4_4'
+exp['hmc']['load_saved'] = True
+exp['hmc']['load_from'] = 'fig_4_4_v4'
+
+exp['data']['plt_y_domain'] = (-4.0, 4.0)
+
+exp['constraints']['constr'] = constr_4_3_2
+exp['constraints']['plot_patch'] = plot_patch
+exp['constraints']['plot_between'] = plot_between
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_3
+exp['data']['integral_constrained_input_region'] = 12
+
+
+exp['hmc']['constrained'] = True
+exp['hmc']['steps'] = 20
+exp['hmc']['stepsize'] = 0.005
+exp['hmc']['hmc_samples'] = 7000
+exp['hmc']['burnin'] = 2000
+exp['hmc']['gamma'] = 2000
+
+
+# main_hmc([exp])
+
+''' ************************ Table 4.1 nonlinear bound ************************ '''
+
+''' 1 Layer - 20 nodes '''
+
+# standard
+exp = copy.deepcopy(f_prototype)
+
+exp['title'] = 'fig_4_1'
+exp['hmc']['load_saved'] = True
+exp['hmc']['load_from'] = 'fig_4_1_v1' # same as baseline
+
+exp['constraints']['constr'] = constr_4_3_2
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_3
+exp['data']['integral_constrained_input_region'] = 12
+
+
+# main_hmc([exp])
+
+''' 1 Layer - 50 nodes '''
+
+# standard
+exp['title'] = 'tab_4_1_50_no'
+exp['hmc']['load_saved'] = True
+exp['hmc']['load_from'] = 'tab_4_1_50_no_v0'
+
+exp['constraints']['constr'] = constr_4_3_2
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_3
+exp['data']['integral_constrained_input_region'] = 12
+
+exp['nn']['architecture'] = [1, 50, 1]
+exp['hmc']['constrained'] = False
+exp['hmc']['steps'] = 20
+exp['hmc']['stepsize'] = 0.005
+exp['hmc']['hmc_samples'] = 7000
+exp['hmc']['burnin'] = 2000
+exp['hmc']['gamma'] = 2000
+
+# main_hmc([exp])
+
+# constrained
+exp['title'] = 'tab_4_1_50_yes'
+exp['hmc']['load_saved'] = False
+exp['hmc']['load_from'] = ' '
+
+exp['constraints']['constr'] = constr_4_3_2
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_3
+exp['data']['integral_constrained_input_region'] = 12
+
+exp['nn']['architecture'] = [1, 50, 1]
+exp['hmc']['constrained'] = True
+exp['hmc']['steps'] = 10
+exp['hmc']['stepsize'] = 0.005
+exp['hmc']['hmc_samples'] = 7000
+exp['hmc']['burnin'] = 2000
+exp['hmc']['gamma'] = 2000
 
 main_hmc([exp])

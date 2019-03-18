@@ -15,6 +15,7 @@ from torch.autograd import Variable
 from bnn import make_BNN
 from darting_hmc import make_darting_HMC_sampler
 from utils import *
+from pp_violation import compute_posterior_predictive_violation_hmc
 
 '''
 Implements Hamiltonian Monte Carlo for a given distribution p(x)
@@ -93,6 +94,8 @@ def make_HMC_sampler(logp, L, epsilon, loglik=None):
 
             # diagnostic information
             acceptance_probs[i] = a
+            if i % 200 == 0 and i > 0:
+                print('200 ave acceptance prob: {}'.format(torch.mean(acceptance_probs[i - 200: i])))
 
             # check for nan's
             if torch.isnan(x).any():
@@ -190,7 +193,7 @@ def main_hmc(all_experiments):
     for id, experiment in enumerate(all_experiments):
 
         print('Experiment {} / {}.'.format(id + 1, len(all_experiments)))
-
+        print(experiment['title'])
         '''BNN '''
         architecture = experiment['nn']['architecture']
         nonlinearity = experiment['nn']['nonlinearity']
@@ -202,6 +205,10 @@ def main_hmc(all_experiments):
         Y = experiment['data']['Y']
         X_plot = experiment['data']['X_plot']
         Y_plot = experiment['data']['Y_plot']
+        X_v_id = experiment['data']['X_v_id']
+        Y_v_id = experiment['data']['Y_v_id']
+        X_v_ood = experiment['data']['X_v_ood']
+        Y_v_ood = experiment['data']['Y_v_ood']
         plt_size = experiment['data']['plt_size']
 
         '''BbB settings'''
@@ -215,8 +222,9 @@ def main_hmc(all_experiments):
         violation_samples = experiment['vi']['constrained']['violation_samples']
         constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
         constr = experiment['constraints']['constr']
-        constr_plot = experiment['constraints']['plot']
-        
+        plot_patch = experiment['constraints']['plot_patch']
+        plot_between = experiment['constraints']['plot_between']
+
         '''Make directory for results'''
         current_directory = make_unique_dir(experiment, method='hmc')
         load_saved = experiment['hmc']['load_saved']
@@ -230,7 +238,22 @@ def main_hmc(all_experiments):
                     noise_ds=noise_ds,
                     nonlinearity=nonlinearity,
                     num_batches=num_batches)
-    
+
+        '''Compute RMSE of validation dataset given optimizated params'''
+        def compute_rmse(x, y, samples):
+            samples = forward(samples, x)
+            pred = samples.mean(0)  # prediction is mean
+            rmse = (pred - y).pow(2).mean(0).pow(0.5)
+            return rmse.item()
+
+        '''Computes held-out log likelihood of x,y given distribution implied by samples'''
+        def held_out_loglikelihood(x, y, samples):
+            samples = forward(samples, x)
+            mean = samples.mean(0).squeeze()
+            std = samples.std(0).squeeze()
+            return ds.Normal(mean, std).log_prob(y).sum().item()
+
+
         '''Computes expected violation via constraint function, of distribution implied by param'''
         def violation(weights):
             x = constrained_region_sampler(violation_samples)
@@ -305,11 +328,24 @@ def main_hmc(all_experiments):
         mean = y_pred.mean(0, keepdim=True)
         std = y_pred.std(0, keepdim=True)
 
+        '''Print table info to out'''
+        pcv = compute_posterior_predictive_violation_hmc(samples, forward, experiment)
+        rmse_id = compute_rmse(X_v_id, Y_v_id, samples)
+        rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples)
+        held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples)
+        held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples)
+
+        print('PCV: {}\nHeld-out LogLik ID: {}\nRMSE ID: {}\nHeld-out LogLik OOD: {}\nRMSE OOD: {}'.format(
+            pcv, held_out_ll_id, rmse_id, held_out_ll_ood, rmse_ood))
+
         '''Approximate posterior predictive for test points'''
 
         fig, ax = plt.subplots(figsize=plt_size)
-        for p in constr_plot:
+        for p in plot_patch:
             ax.add_patch(p.get())
+        for x, y1, y2 in plot_between:
+            ax.fill_between(x.squeeze().numpy(),
+                            y1.squeeze().numpy(), y2.squeeze().numpy(), alpha=0.3, color='red')
         ax.plot(X_plot.squeeze().numpy(), Y_plot.squeeze().numpy(), c='black', linestyle=':')
         ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
                     y_pred.squeeze().transpose(0, 1).numpy(), 
@@ -350,8 +386,11 @@ def main_hmc(all_experiments):
         ax.spines['top'].set_visible(False)
         ax.yaxis.set_ticks_position('left')
         ax.xaxis.set_ticks_position('bottom')
-        for p in constr_plot:
+        for p in plot_patch:
             ax.add_patch(p.get())
+        for x, y1, y2 in plot_between:
+            ax.fill_between(x.squeeze().numpy(),
+                            y1.squeeze().numpy(), y2.squeeze().numpy(), alpha=0.3, color='red')
         ax.plot(X_plot.squeeze().numpy(), Y_plot.squeeze().numpy(), c='black', linestyle=':')
         ax.plot(X_plot.squeeze().numpy(), mean.squeeze().numpy(), c='blue')
         ax.fill_between(X_plot.squeeze().numpy(),
