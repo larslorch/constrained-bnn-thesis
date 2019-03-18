@@ -48,59 +48,49 @@ def main_vi(all_experiments):
         # run (both regular and constrained experiment)
         results, funcs, current_directory = run_experiment(experiment)
 
-        # analysis options
-        show_function_samples = experiment['experiment']['show_function_samples']
-        show_posterior_predictive = experiment['experiment']['show_posterior_predictive']
-        show_posterior_predictive_ind, plot_posterior_predictive_ind_samples = experiment[
-            'experiment']['show_posterior_predictive_ind']
-        show_plot_training_evaluations = experiment['experiment']['show_plot_training_evaluations']
-        show_constraint_function_heatmap = experiment['experiment']['show_constraint_function_heatmap']
-
-        # perform same analysis
-        for best, params, training_evaluations, descr in results:
+        best, params, training_evaluations, descr = results
             
-            opt_param = params[best]
+        param = params[best]
 
-            # compute posterior predictive violation
-            violations = compute_posterior_predictive_violation_vi(
-                params, funcs, experiment)
+        # compute posterior predictive violation
+        violations = compute_posterior_predictive_violation_vi(
+            params, funcs, experiment)
 
-            '''Plotting'''
+        '''Plotting'''
 
-            if show_function_samples or show_posterior_predictive or \
-               show_plot_training_evaluations or show_constraint_function_heatmap:
+        # posterior predictive
+        forward = funcs['forward']
+        sample_q = funcs['sample_q']
+        plt_x_domain = experiment['data']['plt_x_domain']
+        plt_y_domain = experiment['data']['plt_y_domain']
+        X = experiment['data']['X']
+        Y = experiment['data']['Y']
+        X_plot = experiment['data']['X_plot']
+        Y_plot = experiment['data']['Y_plot']
+        X_v_id = experiment['data']['X_v_id']
+        Y_v_id = experiment['data']['Y_v_id']
+        X_v_ood = experiment['data']['X_v_ood']
+        Y_v_ood = experiment['data']['Y_v_ood']
 
-                plot_directory = current_directory + '/plots_' + descr
-                os.makedirs(plot_directory)
+        plot_patch = experiment['constraints']['plot_patch']
+        plot_between = experiment['constraints']['plot_between']
+        size_tup = experiment['data']['plt_size']
 
-            # sample functions
-            if show_function_samples:
-                plot_sample_functions(
-                    opt_param, funcs, experiment, plot_directory, descr)
+        function_samples = 200
 
-            # posterior predictive
-            if show_posterior_predictive:
-                plot_posterior_predictive(
-                    opt_param, funcs, experiment, plot_directory, descr)
+        samples = sample_q(function_samples, param)
 
-            if show_posterior_predictive_ind:
-                plot_posterior_predictive_ind(
-                    opt_param, funcs, experiment, plot_directory, descr, plot_posterior_predictive_ind_samples)
+        plot_posterior_predictive(
+            samples, forward, experiment, current_directory, method='vi')
 
-            # training evaluations
-            if show_plot_training_evaluations:
-                plot_training_evaluation(
-                    experiment, training_evaluations, plot_directory, descr)
+        '''Log results'''
+        # training evaluations
+        plot_training_evaluation(
+            experiment, training_evaluations, current_directory)
 
-            # constraint function
-            if show_constraint_function_heatmap:
-                plot_constraint_heatmap(
-                    opt_param, funcs['forward'], experiment, plot_directory)
-                
 
-            '''Log results'''
-            log_results(experiment, training_evaluations, violations,
-                        best, current_directory, descr)
+        log_results(experiment, training_evaluations, violations,
+                    best, current_directory, descr)
 
 
 if __name__ == '__main__':

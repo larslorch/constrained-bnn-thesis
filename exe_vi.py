@@ -20,7 +20,7 @@ Runs variational inference optimization procedure and returns results
 '''
 def run_experiment(experiment):
 
-    # always, this is done to hide import code in editor
+    # always, this is done to be able to hide import code in editor
     if True:
 
         '''BNN '''
@@ -67,14 +67,8 @@ def run_experiment(experiment):
         
 
         '''Experiment settings'''
-        regular_BbB = experiment['experiment']['run_regular_vi']
-        constrained_BbB = experiment['experiment']['run_constrained_vi']
-        multithread = experiment['experiment']['multithread_computation']
-        compute_held_out_loglik_id = experiment['experiment']['compute_held_out_loglik_id']
-        compute_held_out_loglik_ood = experiment['experiment']['compute_held_out_loglik_ood']
-
-        compute_RMSE_id = experiment['experiment']['compute_RMSE_id']
-        compute_RMSE_ood = experiment['experiment']['compute_RMSE_ood']
+        constrained_exp = experiment['vi']['run_constrained']
+       
 
     '''Make directory for results'''
     current_directory = make_unique_dir(experiment, method='vi')
@@ -112,7 +106,6 @@ def run_experiment(experiment):
 
 
     '''Inference functions'''
-    both_runs = []
 
     '''Computes held-out log likelihood of x,y given distribution implied by param'''
     def held_out_loglikelihood(x, y, param, sample_q):
@@ -209,30 +202,22 @@ def run_experiment(experiment):
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
 
-                if compute_held_out_loglik_id:
-                    training_evaluation['held_out_ll_indist'].append(
-                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
+                training_evaluation['held_out_ll_indist'].append(
+                    held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
 
-                if compute_held_out_loglik_ood:
-                    training_evaluation['held_out_ll_outofdist'].append(
-                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
-                
-                if compute_RMSE_id:
-                    rmse_id_cache = compute_rmse(
-                        X_v_id, Y_v_id, params.detach(), sample_q)
-                    training_evaluation['rmse_id'].append(rmse_id_cache)
-                
-                if compute_RMSE_ood:
-                    training_evaluation['rmse_ood'].append(
-                        compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
+                training_evaluation['held_out_ll_outofdist'].append(
+                    held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
+            
+                rmse_id_cache = compute_rmse(
+                    X_v_id, Y_v_id, params.detach(), sample_q)
+                training_evaluation['rmse_id'].append(rmse_id_cache)
+            
+                training_evaluation['rmse_ood'].append(
+                    compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 # command line printing
-                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}'.format(
-                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
-
-                if compute_RMSE_id:
-                    str += '   ID-RMSE {:10}'.format(round(rmse_id_cache.item(), 4))
-
+                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}    ID-RMSE {:10}'.format(
+                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache.item(), 4))
                 print(str)
 
         return params.detach(), loss.detach(), training_evaluation
@@ -348,31 +333,28 @@ def run_experiment(experiment):
             cores = cores_regular
 
 
-        if multithread:
+        # if multithread:
             
-            # TODO multithreading via pytorch
+        #     # TODO multithreading via pytorch
 
 
-            core_use = min(cores, mp.cpu_count())
-            p = Pool(core_use)
-            print('Cores used: {} Cores available: {}'.format(
-                core_use, mp.cpu_count()))
+        #     core_use = min(cores, mp.cpu_count())
+        #     p = Pool(core_use)
+        #     print('Cores used: {} Cores available: {}'.format(
+        #         core_use, mp.cpu_count()))
 
-            params, best_objectives, training_evaluations = [], [], []
-            for param, obj, eval in p.map(lambda r: run_alg(r, constrained), range(restarts)):
-                params.append(param)
-                best_objectives.append(obj)
-                training_evaluations.append(eval)
+        #     params, best_objectives, training_evaluations = [], [], []
+        #     for param, obj, eval in p.map(lambda r: run_alg(r, constrained), range(restarts)):
+        #         params.append(param)
+        #         best_objectives.append(obj)
+        #         training_evaluations.append(eval)
 
-
-        else:
-            print('Not multithreading.')
             
-            params, best_objectives, training_evaluations = [], [], []
-            for param, obj, eval in map(lambda r: run_alg(r, constrained), range(restarts)):
-                params.append(param)
-                best_objectives.append(obj)
-                training_evaluations.append(eval)
+        params, best_objectives, training_evaluations = [], [], []
+        for param, obj, eval in map(lambda r: run_alg(r, constrained), range(restarts)):
+            params.append(param)
+            best_objectives.append(obj)
+            training_evaluations.append(eval)
 
         
         best = torch.min(torch.tensor(best_objectives), 0)[1]
@@ -382,20 +364,14 @@ def run_experiment(experiment):
         # store results
         str = 'constrained_BbB' if constrained else 'regular_BbB'
         joblib.dump((best, params, training_evaluations),
-                    current_directory + '/optimization_data_results' + '/' + str + '_data.pkl')
+                    current_directory + '/vi/' + str + '_data.pkl')
 
         # print(params)
         return best, params, training_evaluations, str
 
-    # run both experiments
-    both_runs = []
+    '''Run experiment'''
+    results = run_all(constrained=constrained_exp)
 
-    if regular_BbB:
-        both_runs.append(run_all(constrained=False))
-
-    if constrained_BbB:
-        both_runs.append(run_all(constrained=True))
-
-    return both_runs, funcs_passed_on, current_directory
+    return results, funcs_passed_on, current_directory
 
 

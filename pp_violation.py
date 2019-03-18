@@ -32,7 +32,7 @@ def compute_posterior_predictive_violation_vi(params, funcs, experiment):
     T = experiment['vi']['posterior_predictive_analysis']['constrained_region_samples_for_pp_violation']
 
     constrained_region_sampler = experiment['vi']['constrained']['constrained_region_sampler']
-    integral_constrained_region = experiment['data']['integral_constrained_region']
+    integral_constrained_region = experiment['data']['integral_constrained_input_region']
 
     constr = experiment['constraints']['constr']
 
