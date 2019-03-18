@@ -178,6 +178,7 @@ exp['data']['integral_constrained_input_region'] = 12
 ''' 1 Layer - 50 nodes '''
 
 # standard
+exp = copy.deepcopy(f_prototype)
 exp['title'] = 'tab_4_1_50_no'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'tab_4_1_50_no_v0'
@@ -197,6 +198,7 @@ exp['hmc']['gamma'] = 2000
 # main_hmc([exp])
 
 # constrained
+exp = copy.deepcopy(f_prototype)
 exp['title'] = 'tab_4_1_50_yes'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'tab_4_1_50_yes_v0'
@@ -218,6 +220,7 @@ exp['hmc']['gamma'] = 2000
 ''' 2 Layer - 50 nodes '''
 
 # standard
+exp = copy.deepcopy(f_prototype)
 exp['title'] = 'tab_4_2_50_no'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'tab_4_2_50_no_v3'
@@ -237,6 +240,8 @@ exp['hmc']['gamma'] = 2000
 # main_hmc([exp])
 
 # constrained
+exp = copy.deepcopy(f_prototype)
+
 exp['title'] = 'tab_4_2_50_yes'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'tab_4_2_50_yes'
@@ -256,84 +261,3 @@ exp['hmc']['gamma'] = 2000
 # main_hmc([exp])
 
 
-''' ************************ Fig 4.4 asymptotic bound (VI) ************************ '''
-
-# standard bbb as benchmark
-
-exp = copy.deepcopy(f_prototype)
-
-
-def x_4_4_0(x, y):
-    return x + 1
-
-def x_4_4_1(x, y):
-    return -x + 1
-
-def y_4_4_0(x, y):
-    return y + 0.5 + 2 * torch.exp(- x.pow(2))
-
-
-def y_4_4_1(x, y):
-    return - y + 0.5 + 2 * torch.exp(- x.pow(2))
-
-
-constr_4_4 = [
-    [x_4_4_0, y_4_3_2],
-    [x_4_4_0, y_4_3_3],
-    [x_4_4_1, y_4_3_2],
-    [x_4_4_1, y_4_3_3],
-]
-
-plot_patch = []
-
-X_plot_4_4a = torch.linspace(-6, -1, steps=500) 
-X_plot_4_4b = torch.linspace(1, 6, steps=500)
-
-plot_between = [
-    (X_plot_4_4a, 0.5 + 2 * torch.exp(- X_plot_4_4a.pow(2)),
-     10 * torch.ones(X_plot_4_4a.shape)),
-    (X_plot_4_4a, -10 * torch.ones(X_plot_4_4a.shape), -
-     0.5 - 2 * torch.exp(- X_plot_4_4a.pow(2))),
-    (X_plot_4_4b, 0.5 + 2 * torch.exp(- X_plot_4_4b.pow(2)),
-     10 * torch.ones(X_plot_4_4b.shape)),
-    (X_plot_4_4b, -10 * torch.ones(X_plot_4_4b.shape), -
-     0.5 - 2 * torch.exp(- X_plot_4_4b.pow(2))),
-]
-
-
-def constrained_region_sampler_4_4(s):
-    out = torch.cat([
-        ds.Uniform(-6, -1).sample(sample_shape=torch.Size([s, 1])),
-        ds.Uniform(1, 6).sample(sample_shape=torch.Size([s, 1]))
-    ], dim=0)
-    return out
-
-
-exp['title'] = 'fig_4_4'
-
-exp['vi']['run_constrained'] = False
-
-
-exp['constraints']['constr'] = constr_4_4
-exp['constraints']['plot_patch'] = plot_patch
-exp['constraints']['plot_between'] = plot_between
-exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_4
-exp['data']['integral_constrained_input_region'] = 10
-
-exp['vi']['bbb_param']['initialize_q']['mean'] = 1.0  # * torch.randn
-exp['vi']['bbb_param']['initialize_q']['std'] = -2.5  # * torch.ones
-
-
-exp['vi']['rv_samples'] = 100
-exp['vi']['lr'] = 0.01
-
-exp['vi']['regular'] =  {
-    'iterations': 200,
-    'restarts': 1,
-    'reporting_every_': 10,
-    'cores_used': 1,
-}
-
-
-
-main_vi([exp])

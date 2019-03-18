@@ -141,7 +141,7 @@ def run_experiment(experiment):
 
     '''Runs Bayes by Backprop for one random restart'''
     def run_bbb(r, constrained):
-                
+        
         variational_objective, evidence_lower_bound, unpack_params, sample_q = \
             bayes_by_backprop_variational_inference(
                 log_posterior, violation, num_samples=rv_samples, constrained=constrained, num_batches=num_batches)
@@ -185,6 +185,8 @@ def run_experiment(experiment):
             rmse_id=[],
             rmse_ood=[])
 
+        ave_loss = 0
+
         for t in range(iterations):
 
             # optimization
@@ -193,9 +195,10 @@ def run_experiment(experiment):
             loss.backward()
             optimizer.step()
 
+            ave_loss += loss.detach()
 
             # compute evaluation every 'reporting_every_' steps
-            if not t % reporting_every_:
+            if not t % reporting_every_ and t > 0:
                 elbo = evidence_lower_bound(params, t)
                 viol = violation(params, sample_q).detach()
                 training_evaluation['objective'].append(loss.detach())
@@ -216,9 +219,11 @@ def run_experiment(experiment):
                     compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
 
                 # command line printing
-                str = 'Step {:7}  ---  Objective: {:15}  ELBO: {:15}  Violation: {:10}    ID-RMSE {:10}'.format(
-                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache.item(), 4))
+                str = 'Step {:7}  ---  Ave-objective: {:15}  ELBO: {:15}  Violation: {:10}    ID-RMSE {:10}'.format(
+                    t, round(ave_loss.item() / reporting_every_, 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache.item(), 4))
                 print(str)
+
+                ave_loss = 0
 
         return params.detach(), loss.detach(), training_evaluation
 

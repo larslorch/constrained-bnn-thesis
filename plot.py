@@ -31,7 +31,7 @@ class DrawRectangle:
                                  color='red')
 
 
-def plot_posterior_predictive(samples, forward, experiment, current_directory, method='vi'):
+def plot_posterior_predictive(samples, forward, experiment, current_directory, method='vi', j=0):
 
     '''Data '''
     X = experiment['data']['X']
@@ -89,7 +89,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     ax.yaxis.set_label_coords(-0.15, 0.50)
     plt.gcf().subplots_adjust(left=0.2)
 
-    plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_particles.png',
+    plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_particles_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
     plt.show()
     plt.close('all')
@@ -133,7 +133,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     plt.gcf().subplots_adjust(left=0.2)
     # ax.set_title(
     #     'Posterior predictive for {} BNN using HMC'.format(architecture))
-    plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_filled.png',
+    plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_filled_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
     plt.show()
 

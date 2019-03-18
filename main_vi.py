@@ -57,40 +57,27 @@ def main_vi(all_experiments):
             params, funcs, experiment)
 
         '''Plotting'''
-
         # posterior predictive
         forward = funcs['forward']
         sample_q = funcs['sample_q']
-        plt_x_domain = experiment['data']['plt_x_domain']
-        plt_y_domain = experiment['data']['plt_y_domain']
-        X = experiment['data']['X']
-        Y = experiment['data']['Y']
-        X_plot = experiment['data']['X_plot']
-        Y_plot = experiment['data']['Y_plot']
-        X_v_id = experiment['data']['X_v_id']
-        Y_v_id = experiment['data']['Y_v_id']
-        X_v_ood = experiment['data']['X_v_ood']
-        Y_v_ood = experiment['data']['Y_v_ood']
-
-        plot_patch = experiment['constraints']['plot_patch']
-        plot_between = experiment['constraints']['plot_between']
-        size_tup = experiment['data']['plt_size']
-
         function_samples = 200
-
         samples = sample_q(function_samples, param)
 
         plot_posterior_predictive(
-            samples, forward, experiment, current_directory, method='vi')
+            samples, forward, experiment, current_directory, method='vi', j='best')
+
+        for j in range(len(params)):
+            plot_posterior_predictive(
+                samples, forward, experiment, current_directory, method='vi', j=j)
 
         '''Log results'''
         # training evaluations
-        plot_training_evaluation(
-            experiment, training_evaluations, current_directory)
+        # plot_training_evaluation(
+        #     experiment, training_evaluations, current_directory)
 
 
-        log_results(experiment, training_evaluations, violations,
-                    best, current_directory, descr)
+        # log_results(experiment, training_evaluations, violations,
+        #             best, current_directory, descr)
 
 
 if __name__ == '__main__':
