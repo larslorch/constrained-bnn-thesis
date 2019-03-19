@@ -336,24 +336,6 @@ def run_experiment(experiment):
         else:
             restarts = restarts_regular
             cores = cores_regular
-
-
-        # if multithread:
-            
-        #     # TODO multithreading via pytorch
-
-
-        #     core_use = min(cores, mp.cpu_count())
-        #     p = Pool(core_use)
-        #     print('Cores used: {} Cores available: {}'.format(
-        #         core_use, mp.cpu_count()))
-
-        #     params, best_objectives, training_evaluations = [], [], []
-        #     for param, obj, eval in p.map(lambda r: run_alg(r, constrained), range(restarts)):
-        #         params.append(param)
-        #         best_objectives.append(obj)
-        #         training_evaluations.append(eval)
-
             
         params, best_objectives, training_evaluations = [], [], []
         for param, obj, eval in map(lambda r: run_alg(r, constrained), range(restarts)):
@@ -366,16 +348,13 @@ def run_experiment(experiment):
 
         print('Best objective: {}'.format(best_objectives[best]))
 
-        # store results
-        str = 'constrained_BbB' if constrained else 'regular_BbB'
-        joblib.dump((best, params, training_evaluations),
-                    current_directory + '/vi/' + str + '_data.pkl')
-
         # print(params)
-        return best, params, training_evaluations, str
+        return best, params, training_evaluations
 
     '''Run experiment'''
     results = run_all(constrained=constrained_exp)
+
+    joblib.dump(results, current_directory + '/vi/' + experiment['title'] + '_data.pkl')
 
     return results, funcs_passed_on, current_directory
 

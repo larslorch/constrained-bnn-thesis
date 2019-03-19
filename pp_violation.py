@@ -23,10 +23,7 @@ This is an interpretable evaluation metric rather than the violation part of the
 '''
 
 
-def compute_posterior_predictive_violation_vi(params, funcs, experiment):
-
-    prediction = funcs['forward']
-    sample_q = funcs['sample_q']
+def compute_posterior_predictive_violation_vi(params, forward, sample_q, experiment):
 
     S = experiment['vi']['posterior_predictive_analysis']['posterior_samples']
     T = experiment['vi']['posterior_predictive_analysis']['constrained_region_samples_for_pp_violation']
@@ -61,7 +58,7 @@ def compute_posterior_predictive_violation_vi(params, funcs, experiment):
         for x_ in all_mc_points:
 
             # 2.1 - sample ys from p(y' | x', X, Y) using MC samples of W
-            ys = prediction(ws, x_)
+            ys = forward(ws, x_)
 
             # 2.2 - approximate mass in constrained region by ys that satisfy constraint
             ys_violated = 0

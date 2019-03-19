@@ -103,10 +103,12 @@ def constrained_region_sampler_4_4(s):
 
 
 exp['title'] = 'fig_4_4'
-exp['data']['plt_y_domain'] = (-4.0, 4.0)
+exp['vi']['load_saved'] = True
+exp['vi']['load_from'] = 'fig_4_4_v16'
 
+
+exp['data']['plt_y_domain'] = (-5.0, 5.0)
 exp['vi']['run_constrained'] = False
-
 exp['nn']['architecture'] = [1, 50, 1]
 
 
@@ -116,13 +118,13 @@ exp['constraints']['plot_between'] = plot_between
 exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_4
 exp['data']['integral_constrained_input_region'] = 10
 
-exp['vi']['bbb_param']['initialize_q']['mean'] = 1.0  # * torch.randn
-exp['vi']['bbb_param']['initialize_q']['std'] = -1.0  # * torch.ones
+exp['vi']['bbb_param']['initialize_q']['mean'] = 5.0  # * torch.randn
+exp['vi']['bbb_param']['initialize_q']['std'] = -10.0  # * torch.ones
 exp['vi']['rv_samples'] = 1
-exp['vi']['lr'] = 0.01
+exp['vi']['lr'] = 0.005
 exp['vi']['regular'] =  {
-    'iterations': 1000,
-    'restarts': 3,
+    'iterations': 350,
+    'restarts': 1,
     'reporting_every_': 500,
     'cores_used': 1,
 }

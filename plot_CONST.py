@@ -119,6 +119,8 @@ f_prototype = {
         'plot_between': [],
     },
     'vi': {  # alg options: bbb, npv
+        'load_saved': False,
+        'load_from': 'thesis_uni_v999',
         'alg': 'bbb',
         'run_constrained' : False,
         'bbb_param': {

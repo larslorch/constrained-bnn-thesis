@@ -45,21 +45,61 @@ def main_vi(all_experiments):
 
         print('Experiment {} / {}.'.format(id + 1, len(all_experiments)))
 
-        # run (both regular and constrained experiment)
-        results, funcs, current_directory = run_experiment(experiment)
-
-        best, params, training_evaluations, descr = results
+        if experiment['vi']['load_saved']:
+            current_directory = make_unique_dir(experiment, method='vi')
             
-        param = params[best]
+            best, params, training_evaluations = joblib.load(
+                'experiment_results/' + experiment['vi']['load_from'] + '/vi/' + experiment['title'] + '_data.pkl')
+
+            '''BNN '''
+            architecture = experiment['nn']['architecture']
+            nonlinearity = experiment['nn']['nonlinearity']
+            prior_ds = experiment['nn']['prior_ds']
+            noise_ds = experiment['data']['noise_ds']
+            batch_size = experiment['vi']['batch_size']
+            num_batches = int(torch.ceil(torch.tensor(X.shape[0] / batch_size))) if batch_size else 1
+
+            _, forward, _ = \
+                make_BNN(layer_sizes=architecture,
+                            prior_ds=prior_ds,
+                            noise_ds=noise_ds,
+                            nonlinearity=nonlinearity,
+                            num_batches=num_batches)
+
+            def sample_q(samples, params):
+                if experiment['vi']['alg'] == 'bbb':
+                    mean, log_std = params[:, 0], params[:, 1]
+                    weights = mean + torch.randn(samples,
+                                                mean.shape[0]) * log_std.exp()
+                    return weights
+                if experiment['vi']['alg'] == 'npv':
+                    N = params.shape[0]
+                    k = ds.Categorical(probs=torch.ones(N)).sample(torch.Size([samples]))
+                    means, log_stds = params[:, 1:], params[:, 0]
+                    means, log_stds = means[k], log_stds[k]
+                    num_weights = means.shape[1]
+                    covs = torch.zeros(samples, num_weights, num_weights)
+                    I = torch.eye(num_weights)
+                    for j in range(samples):
+                        covs[j] = log_stds[j].exp().pow(2) * I
+                    return ds.MultivariateNormal(means, covs).sample()
+
+        else:
+            # run (both regular and constrained experiment)
+            results, funcs, current_directory = run_experiment(experiment)
+            best, params, training_evaluations = results
+            forward = funcs['forward']
+            sample_q = funcs['sample_q']
+            
+        
 
         # compute posterior predictive violation
         violations = compute_posterior_predictive_violation_vi(
-            params, funcs, experiment)
+            params, forward, sample_q, experiment)
 
         '''Plotting'''
         # posterior predictive
-        forward = funcs['forward']
-        sample_q = funcs['sample_q']
+        param = params[best]
         function_samples = 200
         samples = sample_q(function_samples, param)
 
