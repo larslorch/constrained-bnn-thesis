@@ -240,21 +240,6 @@ def main_hmc(all_experiments):
                     nonlinearity=nonlinearity,
                     num_batches=num_batches)
 
-        '''Compute RMSE of validation dataset given optimizated params'''
-        def compute_rmse(x, y, samples):
-            samples = forward(samples, x)
-            pred = samples.mean(0)  # prediction is mean
-            rmse = (pred - y).pow(2).mean(0).pow(0.5)
-            return rmse.item()
-
-        '''Computes held-out log likelihood of x,y given distribution implied by samples'''
-        def held_out_loglikelihood(x, y, samples):
-            samples = forward(samples, x)
-            mean = samples.mean(0).squeeze()
-            std = samples.std(0).squeeze()
-            return ds.Normal(mean, std).log_prob(y).sum().item()
-
-
         '''Computes expected violation via constraint function, of distribution implied by param'''
         def violation(weights):
             x = constrained_region_sampler(violation_samples)
@@ -329,8 +314,8 @@ def main_hmc(all_experiments):
         pcv = compute_posterior_predictive_violation_hmc(samples, forward, experiment)
         rmse_id = compute_rmse(X_v_id, Y_v_id, samples)
         rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples)
-        held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples)
-        held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples)
+        held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples, forward)
+        held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward)
 
         print('PCV: {}\nHeld-out LogLik ID: {}\nRMSE ID: {}\nHeld-out LogLik OOD: {}\nRMSE OOD: {}'.format(
             pcv, held_out_ll_id, rmse_id, held_out_ll_ood, rmse_ood))

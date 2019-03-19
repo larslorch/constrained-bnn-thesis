@@ -94,7 +94,7 @@ def main_vi(all_experiments):
         
 
         # compute posterior predictive violation
-        violations = compute_posterior_predictive_violation_vi(
+        pcvs = compute_posterior_predictive_violation_vi(
             params, forward, sample_q, experiment)
 
         '''Plotting'''
@@ -109,6 +109,21 @@ def main_vi(all_experiments):
         for j in range(len(params)):
             plot_posterior_predictive(
                 samples, forward, experiment, current_directory, method='vi', j=j)
+
+        '''Print table info to out'''
+        X_v_id = experiment['data']['X_v_id']
+        Y_v_id = experiment['data']['Y_v_id']
+        X_v_ood = experiment['data']['X_v_ood']
+        Y_v_ood = experiment['data']['Y_v_ood']
+
+        rmse_id = compute_rmse(X_v_id, Y_v_id, samples, forward)
+        rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples, forward)
+        held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples, forward)
+        held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward)
+
+        print('PCV: {}\nHeld-out LogLik ID: {}\nRMSE ID: {}\nHeld-out LogLik OOD: {}\nRMSE OOD: {}'.format(
+            pcvs[best], held_out_ll_id, rmse_id, held_out_ll_ood, rmse_ood))
+
 
         '''Log results'''
         # training evaluations

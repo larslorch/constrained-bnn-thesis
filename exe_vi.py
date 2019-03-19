@@ -101,25 +101,6 @@ def run_experiment(experiment):
         def log_posterior(weights, iter):
             batch = batch_indices(iter)
             return log_prob(weights, X[batch], Y[batch])
-
-
-    '''Inference functions'''
-
-    '''Computes held-out log likelihood of x,y given distribution implied by param'''
-    def held_out_loglikelihood(x, y, param, sample_q):
-        ws = sample_q(S, param)
-        samples = forward(ws, x)
-        mean = samples.mean(0).squeeze()
-        std = samples.std(0).squeeze()
-        return ds.Normal(mean, std).log_prob(y).sum()
-
-    '''Compute RMSE of validation dataset given optimizated params'''
-    def compute_rmse(x, y, param, sample_q):
-        ws = sample_q(S, param)
-        samples = forward(ws, x)
-        pred = samples.mean(0) # prediction is mean
-        rmse = (pred - y).pow(2).mean(0).pow(0.5)
-        return rmse
     
     '''Computes expected violation via constraint function, of distribution implied by param'''
     def violation(param, sample_q):
@@ -203,22 +184,24 @@ def run_experiment(experiment):
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
 
+                samples = sample_q(S, params.detach())
+
                 training_evaluation['held_out_ll_indist'].append(
-                    held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
+                    held_out_loglikelihood(X_v_id, Y_v_id, samples, forward))
 
                 training_evaluation['held_out_ll_outofdist'].append(
-                    held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
+                    held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward))
             
                 rmse_id_cache = compute_rmse(
-                    X_v_id, Y_v_id, params.detach(), sample_q)
+                    X_v_id, Y_v_id, samples, forward)
                 training_evaluation['rmse_id'].append(rmse_id_cache)
             
                 training_evaluation['rmse_ood'].append(
-                    compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
+                    compute_rmse(X_v_ood, Y_v_ood, samples, forward))
 
                 # command line printing
                 str = 'Step {:7}  ---  Ave-objective: {:15}  ELBO: {:15}  Violation: {:10}    ID-RMSE {:10}'.format(
-                    t, round(ave_loss.item() / reporting_every_, 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache.item(), 4))
+                    t, round(ave_loss.item() / reporting_every_, 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache, 4))
                 print(str)
 
                 ave_loss = 0

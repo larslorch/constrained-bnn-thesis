@@ -13,6 +13,23 @@ from utils import *
 dpi = 400
 
 
+'''Analysis functions'''
+
+'''Compute RMSE of validation dataset given optimizated params'''
+def compute_rmse(x, y, samples, forward):
+    samples = forward(samples, x)
+    pred = samples.mean(0)  # prediction is mean
+    rmse = (pred - y).pow(2).mean(0).pow(0.5)
+    return rmse.item()
+
+'''Computes held-out log likelihood of x,y given distribution implied by samples'''
+def held_out_loglikelihood(x, y, samples, forward):
+    samples = forward(samples, x)
+    mean = samples.mean(0).squeeze()
+    std = samples.std(0).squeeze()
+    return ds.Normal(mean, std).log_prob(y).sum().item()
+
+    
 '''
 Classes for plotting constrained regions
 '''
