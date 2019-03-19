@@ -61,7 +61,7 @@ def bayes_by_backprop_variational_inference(logp, violation, num_samples=1, cons
         return - evidence_lower_bound(params, iter)
     
     def variational_objective_constrained(params, iter):
-        return - evidence_lower_bound(params, iter) + violation(params)
+        return - evidence_lower_bound(params, iter) + violation(params, sample_q)
 
     
     if constrained:

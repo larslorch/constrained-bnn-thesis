@@ -143,13 +143,11 @@ f_prototype = {
             'iterations': 200,
             'restarts': 1,
             'reporting_every_': 10,
-            'cores_used': 1,
         },
         'constrained': {
             'iterations': 200,
             'restarts': 1,
             'reporting_every_': 10,
-            'cores_used': 1,
             'violation_samples': 5000,
             'tau_tuple': (15.0, 2.0),
             'gamma': 1000,

@@ -50,13 +50,11 @@ def run_experiment(experiment):
         iterations_regular = experiment['vi']['regular']['iterations']
         restarts_regular = experiment['vi']['regular']['restarts']
         reporting_every_regular_ = experiment['vi']['regular']['reporting_every_']
-        cores_regular = experiment['vi']['regular']['cores_used']
 
         # constrained
         iterations_constr = experiment['vi']['constrained']['iterations']
         restarts_constr = experiment['vi']['constrained']['restarts']
         reporting_every_constr_ = experiment['vi']['constrained']['reporting_every_']
-        cores_constr = experiment['vi']['constrained']['cores_used']
         gamma = experiment['vi']['constrained']['gamma']
         tau = experiment['vi']['constrained']['tau_tuple']
         violation_samples = experiment['vi']['constrained']['violation_samples']
@@ -332,10 +330,8 @@ def run_experiment(experiment):
         # specific settings
         if constrained:
             restarts = restarts_constr
-            cores = cores_constr
         else:
             restarts = restarts_regular
-            cores = cores_regular
             
         params, best_objectives, training_evaluations = [], [], []
         for param, obj, eval in map(lambda r: run_alg(r, constrained), range(restarts)):

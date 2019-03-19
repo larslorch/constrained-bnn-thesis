@@ -84,11 +84,11 @@ X_plot_4_4b = torch.linspace(1, 6, steps=500)
 
 plot_between = [
     (X_plot_4_4a, 0.5 + 2 * torch.exp(- X_plot_4_4a.pow(2)),
-     10 * torch.ones(X_plot_4_4a.shape)),
+     15 * torch.ones(X_plot_4_4a.shape)),
     (X_plot_4_4a, -10 * torch.ones(X_plot_4_4a.shape), -
      0.5 - 2 * torch.exp(- X_plot_4_4a.pow(2))),
     (X_plot_4_4b, 0.5 + 2 * torch.exp(- X_plot_4_4b.pow(2)),
-     10 * torch.ones(X_plot_4_4b.shape)),
+     15 * torch.ones(X_plot_4_4b.shape)),
     (X_plot_4_4b, -10 * torch.ones(X_plot_4_4b.shape), -
      0.5 - 2 * torch.exp(- X_plot_4_4b.pow(2))),
 ]
@@ -104,29 +104,67 @@ def constrained_region_sampler_4_4(s):
 
 exp['title'] = 'fig_4_4'
 exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'fig_4_4_v16'
+exp['vi']['load_from'] = 'fig_4_4_v3'
 
 
-exp['data']['plt_y_domain'] = (-5.0, 5.0)
+exp['data']['plt_y_domain'] = (-9.0, 6.0)
 exp['vi']['run_constrained'] = False
 exp['nn']['architecture'] = [1, 50, 1]
 
 
 exp['constraints']['constr'] = constr_4_4
-exp['constraints']['plot_patch'] = plot_patch
-exp['constraints']['plot_between'] = plot_between
+exp['constraints']['plot_patch'] = []
+exp['constraints']['plot_between'] = []
 exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_4
 exp['data']['integral_constrained_input_region'] = 10
 
-exp['vi']['bbb_param']['initialize_q']['mean'] = 5.0  # * torch.randn
+exp['vi']['bbb_param']['initialize_q']['mean'] = 3.0  # * torch.randn
 exp['vi']['bbb_param']['initialize_q']['std'] = -10.0  # * torch.ones
 exp['vi']['rv_samples'] = 1
 exp['vi']['lr'] = 0.005
 exp['vi']['regular'] =  {
-    'iterations': 350,
+    'iterations': 35000,
     'restarts': 1,
     'reporting_every_': 500,
     'cores_used': 1,
+}
+
+# main_vi([exp])
+
+
+# constrained
+
+exp = copy.deepcopy(f_prototype)
+
+
+exp['title'] = 'fig_4_4_constr'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ' '
+
+
+exp['data']['plt_y_domain'] = (-9.0, 6.0)
+exp['vi']['run_constrained'] = True
+exp['nn']['architecture'] = [1, 50, 1]
+
+
+exp['constraints']['constr'] = constr_4_4
+exp['constraints']['plot_patch'] = []
+exp['constraints']['plot_between'] = plot_between
+exp['data']['integral_constrained_input_region'] = 10
+
+exp['vi']['bbb_param']['initialize_q']['mean'] = 3.0  # * torch.randn
+exp['vi']['bbb_param']['initialize_q']['std'] = -10.0  # * torch.ones
+exp['vi']['rv_samples'] = 1
+exp['vi']['lr'] = 0.02
+
+exp['vi']['constrained'] =  {
+    'iterations': 500,
+    'restarts': 1,
+    'reporting_every_': 20,
+    'violation_samples': 5000,
+    'tau_tuple': (15.0, 2.0),
+    'gamma': 1000,
+    'constrained_region_sampler': constrained_region_sampler_4_4,
 }
 
 main_vi([exp])
