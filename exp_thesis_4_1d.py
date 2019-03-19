@@ -49,7 +49,7 @@ Constraints are of the form
 
 
 
-''' ************************ Fig 4.4 asymptotic bound (VI) ************************ '''
+''' ************************ Tab 4.3 Ablation Experiment: GAMMA ************************ '''
 
 # standard bbb as benchmark
 

@@ -312,8 +312,8 @@ def main_hmc(all_experiments):
 
         '''Print table info to out'''
         pcv = compute_posterior_predictive_violation_hmc(samples, forward, experiment)
-        rmse_id = compute_rmse(X_v_id, Y_v_id, samples)
-        rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples)
+        rmse_id = compute_rmse(X_v_id, Y_v_id, samples, forward)
+        rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples, forward)
         held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples, forward)
         held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward)
 
