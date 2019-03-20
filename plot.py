@@ -110,7 +110,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
 
     plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_particles_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
-    plt.show()
+    # plt.show()
     plt.close('all')
 
     #
@@ -154,7 +154,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     #     'Posterior predictive for {} BNN using HMC'.format(architecture))
     plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_filled_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
-    plt.show()
+    # plt.show()
 
 
 '''
@@ -306,53 +306,124 @@ if __name__ == '__main__':
 
     print('Plotting training evaluation for array of BBB runs.')
 
-    core = 'tab_4_3_convergence_analysis'
-    gammas = [0, 1, 10, 100, 1000, 10000]
-    versions = [4, 0, 0, 0, 0, 0]
-    colors = ['black', 'red', 'red',  'red', 'red', 'red', ]
-    # colors = ['red', 'black', 'black',  'black', 'black', 'black', ]
-    # linetypes = ['-', ':', ':', '--', '-.', '-']
-    linetypes = ['-', '-', '-', '-', '-', '-']
-    alphas = [1.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    all_evals = []
-    assert(len(versions) == len(gammas))
-    for i in range(len(gammas)):
-        file = core + '_{}'.format(gammas[i]) 
-        file_version = file + '_v{}'.format(versions[i])
-        best, params, training_evaluations = joblib.load(
-            'experiment_results/' + file_version + '/vi/' + file + '_data.pkl')
-        all_evals.append(training_evaluations)
+    # tau
+
+    type = ['tau', 'gamma']
+    choose = type[0]
+
+    if choose == 'tau':
+
+        names = ['fig_4_8_tau_15_05', 
+                 'fig_4_8_tau_3_05',
+                 'fig_4_8_tau_15_1', 
+                 'fig_4_8_tau_3_1']
+
+        core = 'fig_4_8_tau'
+        versions = [
+            [0, 0, 0, 0],
+            [1, 1, 1, 1],
+            [2, 2, 2, 2],
+            [3, 3, 3, 3],
+            [4, 4, 4, 4],
+        ]
+
+        colors = ['fuchsia', 'black', 'fuchsia', 'black']
+        taus = [(15.0, 0.5), (3.0, 0.5), (15.0, 1.0), (3.0, 1.0)]
+        linetypes = ['-', '-', ':', ':']
+        alphas = [1.0, 1.0, 1.0, 1.0]
+
+        all_version_evals = []
+
+        for j in range(len(versions)):
+            all_evals = []
+            for i in range(len(names)):
+                file_version = names[i] + '_v{}'.format(versions[j][i])
+
+                best, params, training_evaluations = joblib.load(
+                    'experiment_results/' + file_version + '/vi/' + names[i] + '_data.pkl')
+                all_evals.append(training_evaluations)
+            all_version_evals.append(all_evals)
+    # gamma
+    elif choose == 'gamma':
+        core = 'tab_4_3_convergence_analysis'
+        versions = [
+            [1, 1, 1, 1, 1, 1],
+            [2, 2, 2, 2, 2, 2],
+            [3, 3, 3, 3, 3, 3],
+            [4, 4, 4, 4, 4, 4],
+            [5, 5, 5, 5, 5, 5],
+        ]
+        gammas = [0, 1, 10, 100, 1000, 10000]
+        colors = ['black', 'red', 'red',  'red', 'red', 'red', ]
+        # colors = ['red', 'black', 'black',  'black', 'black', 'black', ]
+        # linetypes = ['-', ':', ':', '--', '-.', '-']
+        linetypes = ['-', '-', '-', '-', '-', '-']
+        alphas = [1.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        all_version_evals = []
+        for j in range(len(versions)):
+            all_evals = []
+            for i in range(len(gammas)):
+                file = core + '_{}'.format(gammas[i]) 
+                file_version = file + '_v{}'.format(versions[j][i])
+                best, params, training_evaluations = joblib.load(
+                    'experiment_results/' + file_version + '/vi/' + file + '_data.pkl')
+                all_evals.append(training_evaluations)
+            all_version_evals.append(all_evals)
+
 
     # extraction 
+    all_objs = []
+    all_elbos = []
+    all_violations = []
 
-    objs = []
-    elbos = []
-    violations = []
-    for eval in all_evals:
-        objs.append(eval[0]['objective'])
-        elbos.append(eval[0]['elbo'])
-        violations.append(eval[0]['violation'])
+    for j in range(len(versions)):
+        all_evals = all_version_evals[j]
+        objs = []
+        elbos = []
+        violations = []
+        for eval in all_evals:
+            objs.append(eval[0]['objective'])
+            elbos.append(eval[0]['elbo'])
+            violations.append(eval[0]['violation'])
+        all_objs.append(objs)
+        all_elbos.append(elbos)
+        all_violations.append(violations)
+
+    objs = torch.tensor(all_objs).mean(0)
+    elbos = torch.tensor(all_elbos).mean(0)
+    violations = torch.tensor(all_violations).mean(0)
+   
+    # take average
 
     # adjust for gammas
-    violations = [[(x / gammas[i] if gammas[i] > 0 else x) for x in l]for i, l in enumerate(violations)]
+    # violations = [[(x / gammas[i] if gammas[i] > 0 else x) for x in l]for i, l in enumerate(violations)]
 
     # plotting
-    lst = elbos
+    plot_metric = 'objs'
+    lst = objs
+
+    # plot_metric = 'elbos'
+    # lst = elbos
+
+    # plot_metric = 'violations'
+    # lst = violations
+
+
     printing_intervals = 100
     total = len(lst[0]) * printing_intervals
     plt_size = (3, 3)
 
     '''Plotting'''
-    lst = [[x.item() for x in l] for l in lst]
+    # lst = [[x.item() for x in l] for l in lst]
     fig, ax = plt.subplots(figsize=plt_size)
 
     t = torch.arange(start=0, end=total, step=printing_intervals).numpy()
     leg = []
     for i in range(len(lst)):
-        p, = ax.plot(t, lst[i], color=colors[i], linestyle=linetypes[i], alpha=alphas[i], zorder=len(lst) - i + 1)
+        p, = ax.plot(t, lst[i].numpy(), color=colors[i], linestyle=linetypes[i], alpha=alphas[i], zorder=len(lst) - i + 1)
         leg.append(p)
-    l = plt.legend(leg, [r'$\gamma = {}$'.format(g) for g in gammas])
-    l.set_zorder(20)
+    
+
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.yaxis.set_ticks_position('left')
@@ -362,13 +433,19 @@ if __name__ == '__main__':
 
     ax.set_xlabel(r"$t$", fontsize=12)
 
-    if lst == objs:
+    if plot_metric == 'objs':
         ylabel = r"$-ELBO(\lambda) + E_{\pi_\mathcal{S}(x)}[\gamma \cdot c_\mathcal{S}(x, \mathcal{W})]$"
         ax.set_ylim((0, 600))  # Obj
-    elif lst == elbos:
+    elif plot_metric == 'elbos':
         ylabel = r"$ELBO(\lambda)$"
-        ax.set_ylim((-500, -75))  # ELBO
-    elif lst == violations:
+        ax.set_ylim((-400, -75))  # ELBO
+
+        if choose == 'tau':
+            l = plt.legend(leg, [r'$\tau_b, \tau_s = ({}, {})$'.format(a, b) for a, b in taus])
+        elif choose == 'gamma':
+            l = plt.legend(leg, [r'$\gamma = {}$'.format(g) for g in gammas])
+        l.set_zorder(20)
+    elif plot_metric == 'violations':
         ylabel = r"$E_{\pi_\mathcal{S}(x)}[c_\mathcal{S}(x, \mathcal{W})]$"
         ax.set_ylim((0, 1))  # Violations
     else:
@@ -382,17 +459,17 @@ if __name__ == '__main__':
     # ax.yaxis.set_label_coords(-0.15, 0.50)
     plt.gcf().subplots_adjust(left=0.2)
 
-    if lst == objs:
-        add = 'objs'
-    elif lst == elbos:
-        add = 'elbos'
-    elif lst == violations:
-        add = 'violations'
-    else:
-        assert(False)
+    # if plot_metric == objs:
+    #     add = 'objs'
+    # elif lst == elbos:
+    #     add = 'elbos'
+    # elif lst == violations:
+    #     add = 'violations'
+    # else:
+    #     assert(False)
 
     plt.tight_layout()
-    strg = 'experiment_results/' + core + '_' + add
+    strg = 'experiment_results/' + core + '_' + plot_metric
     plt.savefig(strg + '.png',
                 format='png', frameon=False, dpi=600)
     plt.show()

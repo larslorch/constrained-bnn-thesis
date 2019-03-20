@@ -17,24 +17,26 @@ import seaborn as sns
 import matplotlib.pylab as plt
 
 
-def y_c00(x, y): 
-    return y + 1 + 2 *  torch.exp(- 0.5 * x.pow(2))
+def y_0(x, y):
+    return y + 0.5 + 2 * torch.exp(- x.pow(2))
 
-def x_c10(x, y): 
-    return x.pow(2) - y
+
+def y_1(x, y):
+    return - y + 0.5 + 2 * torch.exp(- x.pow(2))
+
 
 constr = [
-    [y_c00],
-    [x_c10]
+    [y_0],
+    [y_1]
 ]
 
 
 x_dim, y_dim = 500, 500
 x_ticks = 5
 x_lim = (-4, 4)
-y_ticks = 4
-y_lim = (-5, 10)
-tau_s, tau_b = 0.5, 5.0
+y_ticks = 5
+y_lim = (-4, 4)
+tau_s, tau_b = 15, 1
 
 
 # Compute constraint function c_S
@@ -51,7 +53,10 @@ for region in constr:
 def plot_2D_heatmap(M, x_ticks=10, x_lim=(-5, 5), y_ticks=10, y_lim=(-5, 5)):
 
     M = np.transpose(M)
-
+    cmap = sns.cm.rocket
+    # cmap = sns.cubehelix_palette(light=1, as_cmap=True)
+    # cmap = matplotlib.colors.ListedColormap(sns.color_palette("RdBu_r", 20).as_hex())
+     
     xticks_loc = np.linspace(0, M.shape[1], num=x_ticks, endpoint=True, dtype=np.int)
     xticks_arr = np.linspace(x_lim[0], x_lim[1], x_ticks, dtype=np.int)
 
@@ -59,14 +64,14 @@ def plot_2D_heatmap(M, x_ticks=10, x_lim=(-5, 5), y_ticks=10, y_lim=(-5, 5)):
     yticks_arr = np.linspace(y_lim[0], y_lim[1], y_ticks, dtype=np.int)
 
     ax = sns.heatmap(M, linewidth=0, xticklabels=xticks_arr,
-                     yticklabels=yticks_arr[::-1])
+                     yticklabels=yticks_arr[::-1], cmap=cmap)
 
     ax.set_xticks(xticks_loc)
     ax.set_yticks(yticks_loc)
     plt.xticks(rotation=0)
     
     fig = plt.gcf()  # get current figure
-    fig.set_size_inches((4.5, 3.5))
+    fig.set_size_inches((2.5, 2))
 
     plt.savefig('experiment_results/plot_constraint_function.png',
                 format='png', frameon=False, dpi=400)
