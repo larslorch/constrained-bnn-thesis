@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
@@ -296,3 +298,101 @@ def log_results(experiment, training_evaluations, violations, best_index, curren
     text_file.close()
 
     return 0
+
+
+'''Run to plot metrics over iterations of BBB'''
+
+if __name__ == '__main__':
+
+    print('Plotting training evaluation for array of BBB runs.')
+
+    core = 'tab_4_3_convergence_analysis'
+    gammas = [0, 1, 10, 100, 1000, 10000]
+    versions = [4, 0, 0, 0, 0, 0]
+    colors = ['black', 'red', 'red',  'red', 'red', 'red', ]
+    # colors = ['red', 'black', 'black',  'black', 'black', 'black', ]
+    # linetypes = ['-', ':', ':', '--', '-.', '-']
+    linetypes = ['-', '-', '-', '-', '-', '-']
+    alphas = [1.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    all_evals = []
+    assert(len(versions) == len(gammas))
+    for i in range(len(gammas)):
+        file = core + '_{}'.format(gammas[i]) 
+        file_version = file + '_v{}'.format(versions[i])
+        best, params, training_evaluations = joblib.load(
+            'experiment_results/' + file_version + '/vi/' + file + '_data.pkl')
+        all_evals.append(training_evaluations)
+
+    # extraction 
+
+    objs = []
+    elbos = []
+    violations = []
+    for eval in all_evals:
+        objs.append(eval[0]['objective'])
+        elbos.append(eval[0]['elbo'])
+        violations.append(eval[0]['violation'])
+
+    # adjust for gammas
+    violations = [[(x / gammas[i] if gammas[i] > 0 else x) for x in l]for i, l in enumerate(violations)]
+
+    # plotting
+    lst = elbos
+    printing_intervals = 100
+    total = len(lst[0]) * printing_intervals
+    plt_size = (3, 3)
+
+    '''Plotting'''
+    lst = [[x.item() for x in l] for l in lst]
+    fig, ax = plt.subplots(figsize=plt_size)
+
+    t = torch.arange(start=0, end=total, step=printing_intervals).numpy()
+    leg = []
+    for i in range(len(lst)):
+        p, = ax.plot(t, lst[i], color=colors[i], linestyle=linetypes[i], alpha=alphas[i], zorder=len(lst) - i + 1)
+        leg.append(p)
+    l = plt.legend(leg, [r'$\gamma = {}$'.format(g) for g in gammas])
+    l.set_zorder(20)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.yaxis.set_ticks_position('left')
+    ax.xaxis.set_ticks_position('bottom')
+    # ax.set_xlim(experiment['data']['plt_x_domain'])
+    # ax.set_ylim(experiment['data']['plt_y_domain'])
+
+    ax.set_xlabel(r"$t$", fontsize=12)
+
+    if lst == objs:
+        ylabel = r"$-ELBO(\lambda) + E_{\pi_\mathcal{S}(x)}[\gamma \cdot c_\mathcal{S}(x, \mathcal{W})]$"
+        ax.set_ylim((0, 600))  # Obj
+    elif lst == elbos:
+        ylabel = r"$ELBO(\lambda)$"
+        ax.set_ylim((-500, -75))  # ELBO
+    elif lst == violations:
+        ylabel = r"$E_{\pi_\mathcal{S}(x)}[c_\mathcal{S}(x, \mathcal{W})]$"
+        ax.set_ylim((0, 1))  # Violations
+    else:
+        assert(False)
+
+    # tmp = ax.set_ylabel(ylabel, fontsize=12)
+    # tmp.set_rotation(90)
+
+    ax.set_title(ylabel)
+
+    # ax.yaxis.set_label_coords(-0.15, 0.50)
+    plt.gcf().subplots_adjust(left=0.2)
+
+    if lst == objs:
+        add = 'objs'
+    elif lst == elbos:
+        add = 'elbos'
+    elif lst == violations:
+        add = 'violations'
+    else:
+        assert(False)
+
+    plt.tight_layout()
+    strg = 'experiment_results/' + core + '_' + add
+    plt.savefig(strg + '.png',
+                format='png', frameon=False, dpi=600)
+    plt.show()

@@ -44,7 +44,8 @@ def main_vi(all_experiments):
     for id, experiment in enumerate(all_experiments):
 
         print('Experiment {} / {}.'.format(id + 1, len(all_experiments)))
-
+        print(experiment['title'])
+        
         if experiment['vi']['load_saved']:
             current_directory = make_unique_dir(experiment, method='vi')
             
@@ -103,12 +104,14 @@ def main_vi(all_experiments):
         function_samples = 200
         samples = sample_q(function_samples, param)
 
-        plot_posterior_predictive(
-            samples, forward, experiment, current_directory, method='vi', j='best')
-
+       
         for j in range(len(params)):
+            if j == best:
+                strg = 'best'
+            else:
+                strg = j
             plot_posterior_predictive(
-                samples, forward, experiment, current_directory, method='vi', j=j)
+                samples, forward, experiment, current_directory, method='vi', j=strg)
 
         '''Print table info to out'''
         X_v_id = experiment['data']['X_v_id']
@@ -120,6 +123,11 @@ def main_vi(all_experiments):
         rmse_ood = compute_rmse(X_v_ood, Y_v_ood, samples, forward)
         held_out_ll_id = held_out_loglikelihood(X_v_id, Y_v_id, samples, forward)
         held_out_ll_ood = held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward)
+
+        for j in range(len(training_evaluations)):
+            print('Objective: {}\nELBO: {}'.format(
+                training_evaluations[j]['objective'][-1].item(), 
+                training_evaluations[j]['elbo'][-1].item()))
 
         print('PCV: {}\nHeld-out LogLik ID: {}\nRMSE ID: {}\nHeld-out LogLik OOD: {}\nRMSE OOD: {}'.format(
             pcvs[best], held_out_ll_id, rmse_id, held_out_ll_ood, rmse_ood))

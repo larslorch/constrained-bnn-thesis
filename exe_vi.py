@@ -118,6 +118,23 @@ def run_experiment(experiment):
         # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
         return l
 
+    # gamma = 1 for recording purposes
+    def rec_violation(param, sample_q):
+        ws = sample_q(S, param)
+        x = constrained_region_sampler(violation_samples)
+        y = forward(ws, x)
+        tau_c, tau_g = tau
+        c = torch.zeros(y.shape)
+        for region in constr:
+            d = torch.ones(y.shape)
+            for constraint in region:
+                d *= psi(constraint(x, y), tau_c, tau_g)
+            c += d
+        l = c.sum() / y.numel()
+        # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
+        return l
+
+
     '''Runs Bayes by Backprop for one random restart'''
     def run_bbb(r, constrained):
         
@@ -179,7 +196,7 @@ def run_experiment(experiment):
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_ and t > 0:
                 elbo = evidence_lower_bound(params, t)
-                viol = violation(params, sample_q).detach()
+                viol = rec_violation(params, sample_q).detach()
                 training_evaluation['objective'].append(loss.detach())
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)

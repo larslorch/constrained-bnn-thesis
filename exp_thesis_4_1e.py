@@ -84,9 +84,9 @@ def constrained_region_sampler(s):
 
 # gamma = 0
 
-exp['title'] = 'tab_4_3_gamma_0'
-exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'tab_4_3_gamma_0_v0'
+exp['title'] = 'tab_4_3_convergence_analysis_0'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ''
 
 
 exp['data']['plt_y_domain'] = (-10.0, 10.0)
@@ -107,7 +107,7 @@ exp['vi']['lr'] = 0.01
 exp['vi']['regular'] =  {
     'iterations': 10000,
     'restarts': 1,
-    'reporting_every_': 500,
+    'reporting_every_': 100,
     'cores_used': 1,
 }
 
@@ -118,9 +118,9 @@ main_vi([exp])
 exp_gam = copy.deepcopy(f_prototype)
 
 
-exp_gam['title'] = 'tab_4_3_gamma_1'
-exp_gam['vi']['load_saved'] = True
-exp_gam['vi']['load_from'] = 'tab_4_3_gamma_1_v1'
+exp_gam['title'] = 'tab_4_3_convergence_analysis_1'
+exp_gam['vi']['load_saved'] = False
+exp_gam['vi']['load_from'] = ''
 
 
 exp_gam['data']['plt_y_domain'] = (-10.0, 10.0)
@@ -141,7 +141,7 @@ exp_gam['vi']['lr'] = 0.01
 exp_gam['vi']['constrained'] = {
     'iterations': 10000,
     'restarts': 1,
-    'reporting_every_': 500,
+    'reporting_every_': 100,
     'violation_samples': 300,
     'tau_tuple': (15.0, 2.0),
     'gamma': 1,
@@ -153,12 +153,13 @@ exp_gam['vi']['constrained'] = {
 # constrained: gamma = 10
 exp = copy.deepcopy(exp_gam)
 
-exp['title'] = 'tab_4_3_gamma_10'
-exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'tab_4_3_gamma_10_v0'
+exp['title'] = 'tab_4_3_convergence_analysis_10'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ''
 
 exp['vi']['lr'] = 0.01
 exp['vi']['constrained']['iterations'] = 10000
+exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 10
 
@@ -168,12 +169,13 @@ exp['vi']['constrained']['gamma'] = 10
 # constrained: gamma = 100
 exp = copy.deepcopy(exp_gam)
 
-exp['title'] = 'tab_4_3_gamma_100'
-exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'tab_4_3_gamma_100_v0'
+exp['title'] = 'tab_4_3_convergence_analysis_100'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ''
 
 exp['vi']['lr'] = 0.01
 exp['vi']['constrained']['iterations'] = 10000
+exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 100
 
@@ -183,12 +185,13 @@ exp['vi']['constrained']['gamma'] = 100
 # constrained: gamma = 1000
 exp = copy.deepcopy(exp_gam)
 
-exp['title'] = 'tab_4_3_gamma_1000'
-exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'tab_4_3_gamma_1000_v1'
+exp['title'] = 'tab_4_3_convergence_analysis_1000'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ''
 
 exp['vi']['lr'] = 0.01
 exp['vi']['constrained']['iterations'] = 10000
+exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 1000
 
@@ -197,13 +200,25 @@ exp['vi']['constrained']['gamma'] = 1000
 # constrained: gamma = 10000
 exp = copy.deepcopy(exp_gam)
 
-exp['title'] = 'tab_4_3_gamma_10000'
-exp['vi']['load_saved'] = True
-exp['vi']['load_from'] = 'tab_4_3_gamma_10000_v0'
+exp['title'] = 'tab_4_3_convergence_analysis_10000'
+exp['vi']['load_saved'] = False
+exp['vi']['load_from'] = ''
 
 exp['vi']['lr'] = 0.01
 exp['vi']['constrained']['iterations'] = 10000
+exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 10000
 
 # main_vi([exp])
+
+
+'''
+TO DO next:
+
+- write file that plots different BBB training values alongside for (gamma = 0, 1, 10, 100, 1000, 100000)
+- rerun experiments here if plot looks unreasonable or discontinuous
+
+- continue with ablation experiment with tau
+
+'''
