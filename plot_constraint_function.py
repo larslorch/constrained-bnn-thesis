@@ -17,17 +17,34 @@ import seaborn as sns
 import matplotlib.pylab as plt
 
 
+# def y_0(x, y): 
+#     return y + 1 + 2 *  torch.exp(- 0.5 * x.pow(2))
+
+# def y_1(x, y): 
+#     return x.pow(2) - y
+
+# constr = [
+#     [y_0],
+#     [y_1]
+# ]
+
+def x_0(x, y):
+    return x - 1
+
+
+def x_1(x, y):
+    return - x - 1
+
 def y_0(x, y):
-    return y + 0.5 + 2 * torch.exp(- x.pow(2))
+    return y - 1
 
 
 def y_1(x, y):
-    return - y + 0.5 + 2 * torch.exp(- x.pow(2))
+    return - y - 1
 
 
 constr = [
-    [y_0],
-    [y_1]
+    [x_0, x_1, y_0, y_1],
 ]
 
 
@@ -36,7 +53,7 @@ x_ticks = 5
 x_lim = (-4, 4)
 y_ticks = 5
 y_lim = (-4, 4)
-tau_s, tau_b = 15, 1
+tau_s, tau_b =  3.0, 0.5
 
 
 # Compute constraint function c_S
@@ -71,7 +88,7 @@ def plot_2D_heatmap(M, x_ticks=10, x_lim=(-5, 5), y_ticks=10, y_lim=(-5, 5)):
     plt.xticks(rotation=0)
     
     fig = plt.gcf()  # get current figure
-    fig.set_size_inches((2.5, 2))
+    fig.set_size_inches((4, 3.2))
 
     plt.savefig('experiment_results/plot_constraint_function.png',
                 format='png', frameon=False, dpi=400)

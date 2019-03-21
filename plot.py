@@ -84,8 +84,8 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
             y_pred.squeeze().transpose(0, 1).numpy(),
             c='blue',
-            alpha=0.02,
-            linewidth=2)
+            alpha=0.06,
+            linewidth=1.3)
     ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -105,12 +105,12 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     ax.set_xlabel(r"$x$", fontsize=12)
     tmp = ax.set_ylabel(r"$\phi(x; \mathcal{W})$", fontsize=12)
     tmp.set_rotation(0)
-    ax.yaxis.set_label_coords(-0.15, 0.50)
+    ax.yaxis.set_label_coords(-0.20, 0.50)
     plt.gcf().subplots_adjust(left=0.2)
 
     plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_particles_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
-    # plt.show()
+    plt.show()
     plt.close('all')
 
     #
@@ -148,13 +148,13 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     tmp = ax.set_ylabel(r"$\phi(x; \mathcal{W})$", fontsize=12)
     tmp.set_rotation(0)
 
-    ax.yaxis.set_label_coords(-0.15, 0.50)
+    ax.yaxis.set_label_coords(-0.20, 0.50)
     plt.gcf().subplots_adjust(left=0.2)
     # ax.set_title(
     #     'Posterior predictive for {} BNN using HMC'.format(architecture))
     plt.savefig(current_directory + '/' + method + '/' + experiment['title'] + '_filled_{}.png'.format(j),
                 format='png', frameon=False, dpi=dpi)
-    # plt.show()
+    plt.show()
 
 
 '''

@@ -68,24 +68,33 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                     diff = torch.mean(torch.tensor(ps[-49:-2]) - torch.tensor(ps[-48:-1]), dim=0)
                     if diff < mode_searching_convergence:
                         break
-                        
+
+            print('log p(w) = {}'.format(logp(w.detach())))
 
             if torch.any(torch.isnan(torch.tensor(ps))):
                 print('NaNs encountered in optimization. Consider decreasing learning rate.')
                 
             modes[m] = w.squeeze()
 
+        cutoff = 0.75
         modes = modes.detach()
-
-        print('log p of modes:  ', end='')
-        for j in range(n_darting_regions):
-            print('{}'.format(
-                logp(modes[j].unsqueeze(0)).item()))
-        print()
+        logp_modes = torch.zeros(modes.shape[0])
+        for i in range(modes.shape[0]):
+            logp_modes[i] = logp(modes[i].unsqueeze(0))
+        _, indices = torch.topk(logp_modes, math.floor(modes.shape[0] * cutoff))
+        modes = modes[indices]
+        # remove lowest quarter
 
         darting_points = hac_reps(
             modes, n_darting_regions, dist_centroid, f=norm_f, verbose=True)
         
+        print('log p of darting points:  ', end='')
+        for j in range(n_darting_regions):
+            print('{}'.format(
+                logp(darting_points[j].unsqueeze(0)).item()))
+        print()
+
+
         torch.save(darting_points, current_directory + '/hmc/' + experiment['title'] + '_preprocessing.pt' )
         
     # Use pre-loaded darting points
@@ -124,8 +133,12 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
     fig, ax = plt.subplots()
     X_plot = experiment['data']['X_plot']
     y_pred = forward(darting_points, X_plot)
-    for p in experiment['constraints']['plot']:
+    for p in experiment['constraints']['plot_patch']:
         ax.add_patch(p.get())
+    for x, y1, y2 in experiment['constraints']['plot_between']:
+        ax.fill_between(x.squeeze().numpy(),
+                        y1.squeeze().numpy(), y2.squeeze().numpy(), alpha=0.3, color='red')
+
     ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
             y_pred.squeeze().transpose(0, 1).numpy())
     ax.set_title(
