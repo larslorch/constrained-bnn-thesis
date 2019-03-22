@@ -28,32 +28,82 @@ import matplotlib.pylab as plt
 #     [y_1]
 # ]
 
-def x_0(x, y):
-    return x - 1
+# def x_0(x, y):
+#     return x - 1
 
 
-def x_1(x, y):
-    return - x - 1
+# def x_1(x, y):
+#     return - x - 1
 
-def y_0(x, y):
-    return y - 1
+# def y_0(x, y):
+#     return y - 1
 
 
-def y_1(x, y):
-    return - y - 1
+# def y_1(x, y):
+#     return - y - 1
+
+
+# constr = [
+#     [x_0, x_1, y_0, y_1],
+# ]
+
+# right
+def y_1_0(x, y):
+    return y.pow(2) - x + 3  # x - 3 > y^2
+
+# left
+
+
+def y_2_0(x, y):
+    return y.pow(2) + x + 3   # x + 3 < -y^2
+
+
+def x_3_0(x, y):
+    return x - 0.5  # x < 0.5
+
+
+def x_3_1(x, y):
+    return - x - 0.5  # x > -0.5
+
+
+def y_3_0(x, y):
+    return y - 2.0  # y < 2
+
+
+def y_3_1(x, y):
+    return - y  # 0 < y
+
+
+def x_4_0(x, y):
+    return x - 1.5  # x < 1.5
+
+
+def x_4_1(x, y):
+    return - x - 1.5  # x > -1.5
+
+
+def y_4_0(x, y):
+    return y + x.pow(4) + 5  # y < - x^4 - 5
+
+
+def y_5_0(x, y):
+    return - y + 12  # y > 12
 
 
 constr = [
-    [x_0, x_1, y_0, y_1],
+    [y_1_0],
+    [y_2_0],
+    [x_3_0, x_3_1, y_3_0, y_3_1],
+    [x_4_0, x_4_1, y_4_0],
+    [y_5_0],
 ]
 
-
 x_dim, y_dim = 500, 500
-x_ticks = 5
-x_lim = (-4, 4)
+x_ticks = 6
+x_lim = (-5, 5)
 y_ticks = 5
-y_lim = (-4, 4)
-tau_s, tau_b =  3.0, 0.5
+y_lim = (-12, 15)
+tau_s, tau_b =  15.0, 2.0
 
 
 # Compute constraint function c_S

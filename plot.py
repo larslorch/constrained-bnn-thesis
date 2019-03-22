@@ -84,7 +84,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
     ax.plot(X_plot.squeeze().repeat(y_pred.shape[0], 1).transpose(0, 1).numpy(),
             y_pred.squeeze().transpose(0, 1).numpy(),
             c='blue',
-            alpha=0.06,
+            alpha=0.02,
             linewidth=1.3)
     ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
     ax.spines['right'].set_visible(False)

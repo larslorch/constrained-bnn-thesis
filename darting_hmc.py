@@ -76,7 +76,7 @@ def make_darting_HMC_sampler(logp, L, epsilon, dct, loglik=None, forward=None, e
                 
             modes[m] = w.squeeze()
 
-        cutoff = 0.75
+        cutoff = 0.5
         modes = modes.detach()
         logp_modes = torch.zeros(modes.shape[0])
         for i in range(modes.shape[0]):

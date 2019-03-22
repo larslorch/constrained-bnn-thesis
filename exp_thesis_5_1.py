@@ -142,6 +142,7 @@ exp['hmc']['gamma'] = 2000
 
 exp = copy.deepcopy(g_prototype)
 exp['title'] = 'fig_5_2_darting_HMC'
+exp['data']['plt_y_domain'] = (-15.0, 15.0)
 
 exp['constraints']['constr'] = constr
 exp['constraints']['plot_patch'] = plot_patch
@@ -152,7 +153,7 @@ exp['nn']['architecture'] = [1, 20, 1]
 
 exp['hmc'] = {
     'load_saved': True,
-    'load_from': 'fig_5_2_darting_HMC_v13',
+    'load_from': 'fig_5_2_darting_HMC_v2',
     'constrained': True,
     'gamma': 5000,
     'max_violation_heuristic': True,
@@ -160,7 +161,63 @@ exp['hmc'] = {
         'bool': True,
         'preprocessing': {
             'load_saved': True,
-            'load_from': 'fig_5_2_darting_HMC_v13',
+            'load_from': 'fig_5_2_darting_HMC_v2',
+            'norm_f': 0.3,
+            'random_restart_scale': 3,
+            'searched_modes': 30,
+            'mode_searching_convergence': 0.005,
+            'n_darting_regions': 6,
+        },
+        'algorithm': {
+            'darting_region_radius': 1.5e1,
+            'p_check': 0.03,
+        },
+    },
+    'stepsize': 0.005,
+    'steps': 20,
+    'hmc_samples': 10000,
+    'burnin': 2000,
+    'thinning': 5,
+}
+
+
+# main_hmc([exp])
+
+
+# darting hmc with added data point
+
+
+X_g = torch.tensor([-2, -1.8, -1.1, 1.1, 1.8, 2]).unsqueeze(1)
+Y_g = g(X_g)
+
+X_g_prime = torch.cat([X_g, torch.tensor([[0.0]])], dim=0)
+Y_g_prime = torch.cat([Y_g, torch.tensor([[4.0]])], dim=0)
+
+
+exp = copy.deepcopy(g_prototype)
+exp['title'] = 'fig_5_4_darting_HMC'
+exp['data']['plt_y_domain'] = (-15.0, 15.0)
+exp['data']['X'] = X_g_prime
+exp['data']['Y'] = Y_g_prime
+
+exp['constraints']['constr'] = constr
+exp['constraints']['plot_patch'] = plot_patch
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler
+exp['data']['integral_constrained_input_region'] = 1
+
+exp['nn']['architecture'] = [1, 20, 1]
+
+exp['hmc'] = {
+    'load_saved': False,
+    'load_from': 'fig_5_4_darting_HMC_v3',
+    'constrained': True,
+    'gamma': 5000,
+    'max_violation_heuristic': True,
+    'darting': {
+        'bool': True,
+        'preprocessing': {
+            'load_saved': True,
+            'load_from': 'fig_5_4_darting_HMC_v3',
             'norm_f': 0.3,
             'random_restart_scale': 3,
             'searched_modes': 30,
@@ -168,7 +225,7 @@ exp['hmc'] = {
             'n_darting_regions': 3,
         },
         'algorithm': {
-            'darting_region_radius': 2.0e1,
+            'darting_region_radius': 1.5e1,
             'p_check': 0.03,
         },
     },
@@ -181,9 +238,3 @@ exp['hmc'] = {
 
 
 main_hmc([exp])
-
-
-# these settings of darting work well. key was getting the preprocessing to include top 75 perc only 
-# perhaps try reducing radius to encourage less darting?
-
-# if done move on to complicated example
