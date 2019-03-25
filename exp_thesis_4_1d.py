@@ -85,7 +85,7 @@ def constrained_region_sampler(s):
 # gamma = 0
 
 exp['title'] = 'tab_4_3_gamma_0'
-exp['vi']['load_saved'] = True
+exp['vi']['load_saved'] = False
 exp['vi']['load_from'] = 'tab_4_3_gamma_0_v0'
 
 

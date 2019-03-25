@@ -237,4 +237,47 @@ exp['hmc'] = {
 }
 
 
-main_hmc([exp])
+# main_hmc([exp])
+
+
+# constrained nonparametric VI
+exp = copy.deepcopy(g_prototype)
+
+exp['title'] = 'fig_5_2_nonparametric_VI'
+exp['vi']['alg'] = 'gumbel_softm_mog'  # 'gumbel_softm_mog' 'npv' 'npv_general'
+exp['vi']['load_saved'] = True
+exp['vi']['load_from'] = 'fig_5_2_nonparametric_VI_v5'
+
+exp['data']['plt_y_domain'] = (-15.0, 17.0)
+exp['vi']['run_constrained'] = True
+exp['nn']['architecture'] = [1, 20, 1]
+
+
+exp['constraints']['constr'] = constr
+exp['constraints']['plot_patch'] = plot_patch
+exp['constraints']['plot_between'] = []
+exp['data']['integral_constrained_input_region'] = 1
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler
+
+exp['vi']['gumbel_softm_mog_param'] = {
+    'mixtures' : 10,
+    'gumbel_tau' : 0.1,
+    'reparam_estimator_samples' : 1,
+    'initialize_q' : {
+        'mean' : 3.0,
+        'std' : -10.0
+    }
+}
+
+exp['vi']['constrained']['iterations'] = 20000
+exp['vi']['constrained']['reporting_every_'] = 100
+exp['vi']['constrained']['violation_samples'] = 200
+exp['vi']['constrained']['gamma'] = 3000
+exp['vi']['constrained']['tau_tuple'] = (5.0, 0.5)
+
+
+exp['vi']['regular']['iterations'] = 10000
+exp['vi']['regular']['reporting_every_'] = 500
+exp['vi']['regular']['violation_samples'] = 100
+
+main_vi([exp])

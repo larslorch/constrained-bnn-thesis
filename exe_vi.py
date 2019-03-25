@@ -12,7 +12,7 @@ from plot import *
 from utils import *
 from bbb import bayes_by_backprop_variational_inference
 from bnn import make_BNN
-from npv import nonparametric_variational_inference
+from npv import nonparametric_variational_inference, gumbel_softmax_mix_of_gauss
 
 
 '''
@@ -114,8 +114,8 @@ def run_experiment(experiment):
             for constraint in region:
                 d *= psi(constraint(x, y), tau_c, tau_g)
             c += d
-        l = gamma * c.sum() / y.numel()
-        # l = gamma * c.max() # returns max violation along y.shape (might be better than average across all)
+        # l = gamma * c.sum() / y.numel()
+        l = gamma * c.max() # returns max violation along y.shape (can help for mode preprocessing)
         return l
 
     # gamma = 1 for recording purposes
@@ -223,20 +223,35 @@ def run_experiment(experiment):
 
                 ave_loss = 0
 
+        means, log_stds = unpack_params(params.detach())
+        print('Means: {}'.format(means.numpy()))
+        print('Variances: {}'.format(log_stds.exp().pow(2).numpy()))
+
         return params.detach(), loss.detach(), training_evaluation
 
     '''Runs nonparametric VI for one random restart'''
-    def run_npv(r, constrained):
+    def run_npv(r, constrained, general_mixture=True):
 
-        # initialization: params has shape (mixtures, weights + 1)
         print(50 * '-')
         mixtures = experiment['vi']['npv_param']['mixtures']
-        params = torch.zeros(mixtures, num_weights + 1)
-        
-        for m in range(mixtures):
-            params[m, :] = experiment['vi']['bbb_param']['initialize_q']['mean'] * \
-                torch.randn(num_weights + 1)
-            params[m, 0] = experiment['vi']['bbb_param']['initialize_q']['std'] 
+
+        if general_mixture:
+            params = torch.ones(mixtures, 2 * num_weights + 1)
+
+            for m in range(mixtures):
+                params[m, 1:num_weights + 1] = experiment['vi']['npv_param']['initialize_q']['mean'] * \
+                    torch.randn(num_weights)
+                params[m, num_weights + 1:] = experiment['vi']['npv_param']['initialize_q']['std'] * \
+                    torch.ones(num_weights)
+
+        else:
+                
+            params = torch.zeros(mixtures, num_weights + 1)
+            
+            for m in range(mixtures):
+                params[m, :] = experiment['vi']['npv_param']['initialize_q']['mean'] * \
+                    torch.randn(num_weights + 1)
+                params[m, 0] = experiment['vi']['npv_param']['initialize_q']['std']
 
         params = Variable(params, requires_grad=True)
         
@@ -244,9 +259,11 @@ def run_experiment(experiment):
             nonparametric_variational_inference(
                 log_posterior, 
                 violation, 
+                num_weights,
                 num_samples=rv_samples, 
                 constrained=constrained, 
-                num_batches=num_batches)
+                num_batches=num_batches,
+                general_mixture=general_mixture)
 
         funcs_passed_on['unpack_params'] = unpack_params
         funcs_passed_on['sample_q'] = sample_q
@@ -272,12 +289,16 @@ def run_experiment(experiment):
 
         optimizer = optim.Adam([params], lr=lr)
 
+        ave_loss = 0
+
         for t in range(iterations):
                         
             optimizer.zero_grad()
             loss = variational_objective(params, t) # potentially use first-order approx in the beginning
             loss.backward()
             optimizer.step()
+
+            ave_loss += loss.detach()
 
             # compute evaluation every 'reporting_every_' steps
             if not t % reporting_every_:
@@ -287,32 +308,150 @@ def run_experiment(experiment):
                 training_evaluation['elbo'].append(elbo.detach())
                 training_evaluation['violation'].append(viol)
 
-                if compute_held_out_loglik_id:
-                    training_evaluation['held_out_ll_indist'].append(
-                        held_out_loglikelihood(X_v_id, Y_v_id, params.detach(), sample_q))
+                samples = sample_q(S, params.detach())
 
-                if compute_held_out_loglik_ood:
-                    training_evaluation['held_out_ll_outofdist'].append(
-                        held_out_loglikelihood(X_v_ood, Y_v_ood, params.detach(), sample_q))
+                training_evaluation['held_out_ll_indist'].append(
+                    held_out_loglikelihood(X_v_id, Y_v_id, samples, forward))
 
-                if compute_RMSE_id:
-                    rmse_id_cache = compute_rmse(
-                        X_v_id, Y_v_id, params.detach(), sample_q)
-                    training_evaluation['rmse_id'].append(rmse_id_cache)
+                training_evaluation['held_out_ll_outofdist'].append(
+                    held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward))
 
-                if compute_RMSE_ood:
-                    training_evaluation['rmse_ood'].append(
-                        compute_rmse(X_v_ood, Y_v_ood, params.detach(), sample_q))
+                rmse_id_cache = compute_rmse(
+                    X_v_id, Y_v_id, samples, forward)
+                training_evaluation['rmse_id'].append(rmse_id_cache)
+
+                training_evaluation['rmse_ood'].append(
+                    compute_rmse(X_v_ood, Y_v_ood, samples, forward))
 
                 # command line printing
-                str = 'Step {:7}  ---  Objective: {:15}  ELBO (second-order): {:15}  Violation: {:10}'.format(
-                    t, round(loss.item(), 4), round(elbo.item(), 4), round(viol.item(), 4))
-
-                if compute_RMSE_id:
-                    str += '   ID-RMSE {:10}'.format(
-                        round(rmse_id_cache.item(), 4))
-
+                str = 'Step {:7}  ---  Ave-objective: {:15}  ELBO: {:15}  Violation: {:10}    ID-RMSE {:10}'.format(
+                    t, round(ave_loss.item() / reporting_every_, 4), round(elbo.item(), 4), round(viol.item(), 4), round(rmse_id_cache, 4))
                 print(str)
+
+                ave_loss = 0
+
+        if general_mixture:
+            pi, means, log_stds = unpack_params(params.detach())
+            print('Mixture component weights: {}'.format(pi.numpy()))
+        else:
+            means, log_stds = unpack_params(params.detach())
+        print('Means: {}'.format(means.numpy()))
+        print('Variances: {}'.format(log_stds.exp().pow(2).numpy()))
+
+        return params.detach(), loss.detach(), training_evaluation
+
+    '''Runs Bayes by Backprop for one random restart'''
+    def run_gumbel_softmax_mog(r, constrained):
+
+        print('Gumbel-Softmax MOG')
+
+        variational_objective, evidence_lower_bound, unpack_params, sample_q, entropy_fun = \
+            gumbel_softmax_mix_of_gauss(
+                log_posterior, violation, num_weights, 
+                tau=experiment['vi']['gumbel_softm_mog_param']['gumbel_tau'], 
+                num_samples=experiment['vi']['gumbel_softm_mog_param']['reparam_estimator_samples'],
+                constrained=constrained, num_batches=num_batches)
+
+        funcs_passed_on['unpack_params'] = unpack_params
+        funcs_passed_on['elbo'] = evidence_lower_bound
+
+        # initialization
+        print(50 * '-')
+        mixtures = experiment['vi']['gumbel_softm_mog_param']['mixtures']
+        params = torch.zeros(mixtures, 2 * num_weights + 1)
+
+        for m in range(mixtures):
+            params[m, 0] = 1 / mixtures
+            params[m, 1:num_weights + 1] = experiment['vi']['gumbel_softm_mog_param']['initialize_q']['mean'] * \
+                torch.randn(num_weights)
+            params[m, num_weights + 1:] = experiment['vi']['gumbel_softm_mog_param']['initialize_q']['std'] * \
+                torch.ones(num_weights)
+
+        params = Variable(params, requires_grad=True)
+
+        # specific settings
+        if constrained:
+            iterations = iterations_constr
+            reporting_every_ = reporting_every_constr_
+        else:
+            iterations = iterations_regular
+            reporting_every_ = reporting_every_regular_
+
+        # ADAM optimizer
+        optimizer = optim.Adam([params], lr=lr)
+        # optimizer = optim.LBFGS([params], lr=1)
+        # optimizer = optim.SGD([params], lr=0.01, momentum=0.9)
+
+        # evaluation
+        training_evaluation = dict(
+            objective=[],
+            elbo=[],
+            violation=[],
+            held_out_ll_indist=[],
+            held_out_ll_outofdist=[],
+            rmse_id=[],
+            rmse_ood=[])
+
+        ave_loss = 0
+
+        for t in range(iterations):
+
+            # optimization
+            optimizer.zero_grad()
+            loss = variational_objective(params, t)
+            loss.backward()
+            optimizer.step()
+
+            ave_loss += loss.detach()
+
+            # compute evaluation every 'reporting_every_' steps
+            if not t % reporting_every_ and t > 0:
+                elbo = evidence_lower_bound(params, t)
+                viol = rec_violation(params, sample_q).detach()
+                entropy = entropy_fun(params.detach())
+                training_evaluation['objective'].append(loss.detach())
+                training_evaluation['elbo'].append(elbo.detach())
+                training_evaluation['violation'].append(viol)
+
+                samples = sample_q(S, params.detach())
+
+                training_evaluation['held_out_ll_indist'].append(
+                    held_out_loglikelihood(X_v_id, Y_v_id, samples, forward))
+
+                training_evaluation['held_out_ll_outofdist'].append(
+                    held_out_loglikelihood(X_v_ood, Y_v_ood, samples, forward))
+
+                rmse_id_cache = compute_rmse(
+                    X_v_id, Y_v_id, samples, forward)
+                training_evaluation['rmse_id'].append(rmse_id_cache)
+
+                training_evaluation['rmse_ood'].append(
+                    compute_rmse(X_v_ood, Y_v_ood, samples, forward))
+
+                # command line printing
+                str = 'Step {:7}  ---  Ave-objective: {:15}  ELBO: {:15}  Entropy: {:10} Violation: {:10}    ID-RMSE {:10}'.format(
+                    t, round(ave_loss.item() / reporting_every_, 4), round(elbo.item(), 4), 
+                    round(entropy.item(), 4), round(viol.item(), 4), round(rmse_id_cache, 4))
+                print(str)
+
+                ave_loss = 0
+
+        pi, means, log_stds = unpack_params(params.detach())
+        print('Mixture component weights: {}'.format(pi.numpy()))
+        # print('Means: {}'.format(means.numpy()))
+        # print('Variances: {}'.format(log_stds.exp().pow(2).numpy()))
+
+        def sample_q_hard(samples, params):
+            '''Samples from mixture of Gaussian q hard (no relaxation)'''
+            pi, means, log_stds = unpack_params(params)
+            k = ds.Categorical(probs=pi).sample(torch.Size([samples]))
+            means, log_stds = means[k], log_stds[k]
+            covs = torch.zeros(samples, num_weights, num_weights)
+            for j in range(samples):
+                covs[j] = torch.diag(log_stds[j].exp().pow(2))
+            s = ds.MultivariateNormal(means, covs).sample()
+            return s
+        funcs_passed_on['sample_q'] = sample_q_hard
 
         return params.detach(), loss.detach(), training_evaluation
 
@@ -322,7 +461,9 @@ def run_experiment(experiment):
         # choose alg
         algs = {
             'bbb' : run_bbb,
-            'npv': run_npv,
+            'npv': lambda r, constrained: run_npv(r, constrained, general_mixture=False),
+            'npv_general' : run_npv,
+            'gumbel_softm_mog': run_gumbel_softmax_mog,
         }
         code = experiment['vi']['alg']
         run_alg = algs[code]
