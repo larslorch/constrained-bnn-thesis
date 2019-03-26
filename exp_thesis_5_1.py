@@ -276,8 +276,8 @@ exp['vi']['constrained']['gamma'] = 3000
 exp['vi']['constrained']['tau_tuple'] = (5.0, 0.5)
 
 
-exp['vi']['regular']['iterations'] = 10000
-exp['vi']['regular']['reporting_every_'] = 500
-exp['vi']['regular']['violation_samples'] = 100
+# exp['vi']['regular']['iterations'] = 10000
+# exp['vi']['regular']['reporting_every_'] = 500
+# exp['vi']['regular']['violation_samples'] = 100
 
 main_vi([exp])

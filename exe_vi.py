@@ -114,8 +114,8 @@ def run_experiment(experiment):
             for constraint in region:
                 d *= psi(constraint(x, y), tau_c, tau_g)
             c += d
-        # l = gamma * c.sum() / y.numel()
-        l = gamma * c.max() # returns max violation along y.shape (can help for mode preprocessing)
+        l = gamma * c.sum() / y.numel()
+        # l = gamma * c.max() # returns max violation along y.shape (can help for mode preprocessing)
         return l
 
     # gamma = 1 for recording purposes
@@ -156,6 +156,15 @@ def run_experiment(experiment):
         params = Variable(
             torch.cat([init_mean, init_log_std], dim=1),
             requires_grad=True)
+        
+        # preoptimized parameters (hard coded here)
+        init_at = 'tab_4_3_convergence_analysis_10000'
+        init_at_version = '_v1'
+        if False:
+            print('Using previously optimized parameters for initialization')
+            best, preoptimized, _ = joblib.load(
+                'experiment_results/' + init_at + init_at_version + '/vi/' + init_at + '_data.pkl')
+            params = Variable(preoptimized[best], requires_grad=True)
 
         # specific settings
         if constrained:

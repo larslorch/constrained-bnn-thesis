@@ -85,19 +85,16 @@ def main_vi(all_experiments):
                         covs[j] = log_stds[j].exp().pow(2) * I
                     return ds.MultivariateNormal(means, covs).sample()
                 if experiment['vi']['alg'] == 'gumbel_softm_mog':
-                    tau = experiment['vi']['gumbel_softm_mog_param']['gumbel_tau']
                     num_weights = int((params.shape[1] - 1) / 2)
                     pi_, means, log_stds = (params[:, 0], 
                         params[:, 1:num_weights + 1], params[:, num_weights + 1:])
                     pi = nn.functional.softmax(pi_, dim=0)
-                    mixtures = params.shape[0]
-                    G = ds.Gumbel(torch.tensor(0.0), torch.tensor(1.0)).sample(
-                        torch.Size([samples, mixtures]))
-                    E = ds.Normal(torch.tensor(0.0), torch.tensor(1.0)).sample(
-                        torch.Size([samples, mixtures, num_weights]))
-                    w = nn.functional.gumbel_softmax(pi + G, tau=tau, hard=False)
-                    all_gaussians = means + log_stds.exp() * E
-                    return torch.einsum('bk,bkw->bw', [w, all_gaussians])
+                    k = ds.Categorical(probs=pi).sample(torch.Size([samples]))
+                    means, log_stds = means[k], log_stds[k]
+                    covs = torch.zeros(samples, num_weights, num_weights)
+                    for j in range(samples):
+                        covs[j] = torch.diag(log_stds[j].exp().pow(2))
+                    return ds.MultivariateNormal(means, covs).sample()
 
         else:
             # run (both regular and constrained experiment)

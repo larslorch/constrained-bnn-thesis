@@ -105,7 +105,7 @@ exp['vi']['bbb_param']['initialize_q']['std'] = -10.0  # * torch.ones
 exp['vi']['rv_samples'] = 1
 exp['vi']['lr'] = 0.01
 exp['vi']['regular'] =  {
-    'iterations': 10000,
+    'iterations': 1000,
     'restarts': 1,
     'reporting_every_': 100,
     'cores_used': 1,
@@ -148,7 +148,7 @@ exp_gam['vi']['constrained'] = {
     'constrained_region_sampler': constrained_region_sampler,
 }
 
-main_vi([exp_gam])
+# main_vi([exp_gam])
 
 # constrained: gamma = 10
 exp = copy.deepcopy(exp_gam)
@@ -163,7 +163,7 @@ exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 10
 
-main_vi([exp])
+# main_vi([exp])
 
 
 # constrained: gamma = 100
@@ -179,7 +179,7 @@ exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 100
 
-main_vi([exp])
+# main_vi([exp])
 
 
 # constrained: gamma = 1000
@@ -195,7 +195,7 @@ exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 1000
 
-main_vi([exp])
+# main_vi([exp])
 
 # constrained: gamma = 10000
 exp = copy.deepcopy(exp_gam)
@@ -210,15 +210,4 @@ exp['vi']['constrained']['reporting_every_'] = 100
 exp['vi']['constrained']['violation_samples'] = 300
 exp['vi']['constrained']['gamma'] = 10000
 
-main_vi([exp])
-
-
-'''
-TO DO next:
-
-- write file that plots different BBB training values alongside for (gamma = 0, 1, 10, 100, 1000, 100000)
-- rerun experiments here if plot looks unreasonable or discontinuous
-
-- continue with ablation experiment with tau
-
-'''
+# main_vi([exp])

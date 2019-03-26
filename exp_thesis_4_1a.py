@@ -52,9 +52,15 @@ Constraints are of the form
 
 exp = copy.deepcopy(f_prototype)
 
+def constrained_region_sampler_4_1(s):
+    out = ds.Uniform(-6, 6).sample(sample_shape=torch.Size([s, 1]))
+    return out
+
 exp['title'] = 'fig_4_1'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'fig_4_1_v1'
+exp['data']['integral_constrained_input_region'] = 12
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_1
 
 # main_hmc([exp])
 
@@ -65,6 +71,8 @@ exp = copy.deepcopy(g_prototype)
 exp['title'] = 'fig_4_2'
 exp['hmc']['load_saved'] = True
 exp['hmc']['load_from'] = 'fig_4_2_v1'
+exp['data']['integral_constrained_input_region'] = 12
+exp['vi']['constrained']['constrained_region_sampler'] = constrained_region_sampler_4_1
 
 # main_hmc([exp])
 
@@ -83,8 +91,8 @@ constr = [
 ]
 
 plot_patch = [
-    DrawRectangle(bottom_left=(-6, -20), top_right=(6, -2)),
-    DrawRectangle(bottom_left=(-6, 2), top_right=(6, 20)),
+    DrawRectangle(bottom_left=(-6, -20), top_right=(6, -2.5)),
+    DrawRectangle(bottom_left=(-6, 2.5), top_right=(6, 20)),
 ]
 
 def constrained_region_sampler_4_3(s):

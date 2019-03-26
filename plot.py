@@ -87,6 +87,7 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
             alpha=0.02,
             linewidth=1.3)
     ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.yaxis.set_ticks_position('left')
@@ -138,6 +139,10 @@ def plot_posterior_predictive(samples, forward, experiment, current_directory, m
                     color='blue',
                     alpha=0.2)
     ax.scatter(X.numpy(), Y.numpy(), c='black', marker='x')
+
+    # ax.scatter(X_v_id.numpy(), Y_v_id.numpy(), c='red', marker='*')
+    # ax.scatter(X_v_ood.numpy(), Y_v_ood.numpy(), c='red', marker='*')
+
     ax.set_xlim(experiment['data']['plt_x_domain'])
     ax.set_ylim(experiment['data']['plt_y_domain'])
     # ax.spines['bottom'].set_bounds(-4.5, 4.5)
@@ -309,7 +314,7 @@ if __name__ == '__main__':
     # tau
 
     type = ['tau', 'gamma']
-    choose = type[0]
+    choose = type[1]
 
     if choose == 'tau':
 
@@ -360,17 +365,22 @@ if __name__ == '__main__':
         linetypes = ['-', '-', '-', '-', '-', '-']
         alphas = [1.0, 0.2, 0.4, 0.6, 0.8, 1.0]
         all_version_evals = []
+        all_version_params = []
         for j in range(len(versions)):
             all_evals = []
+            all_params = []
             for i in range(len(gammas)):
                 file = core + '_{}'.format(gammas[i]) 
                 file_version = file + '_v{}'.format(versions[j][i])
                 best, params, training_evaluations = joblib.load(
                     'experiment_results/' + file_version + '/vi/' + file + '_data.pkl')
                 all_evals.append(training_evaluations)
+                all_params.append(params[best])
             all_version_evals.append(all_evals)
+            all_version_params.append(all_params)
 
 
+    '''Plotting'''
     # extraction 
     all_objs = []
     all_elbos = []
